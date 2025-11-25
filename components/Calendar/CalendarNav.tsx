@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useCalendar } from '@/lib/contexts/CalendarContext';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { dateHelpers } from '@/lib/utils/dateHelpers';
@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ChevronLeft, ChevronRight, Settings, Check, ChevronDown, Keyboard, List, Clock, LogOut, Menu, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Settings, Check, ChevronDown, Keyboard, List, Clock, LogOut, Menu, Calendar as CalendarIcon, X, Sun, LayoutGrid } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ViewMode, TaskColor } from '@/types';
 import { cn } from '@/lib/utils';
@@ -331,65 +331,83 @@ export function CalendarNav({ onShowKeyboardHelp, weekViewMode = 'list', onWeekV
       </div>
 
       {/* Mobile Nav - Single Row Design */}
+      <MobileNav
+        state={state}
+        setViewMode={setViewMode}
+        weekViewMode={weekViewMode}
+        onWeekViewModeChange={onWeekViewModeChange}
+        handlePrevious={handlePrevious}
+        handleNext={handleNext}
+        goToToday={goToToday}
+        getMobileDateDisplay={getMobileDateDisplay}
+        isViewAll={isViewAll}
+        currentProfile={currentProfile}
+        profiles={profiles}
+        handleProfileSwitch={handleProfileSwitch}
+        user={user}
+        signOut={signOut}
+      />
+    </div>
+  );
+}
+
+// Mobile Navigation with Sidebar
+function MobileNav({
+  state,
+  setViewMode,
+  weekViewMode,
+  onWeekViewModeChange,
+  handlePrevious,
+  handleNext,
+  goToToday,
+  getMobileDateDisplay,
+  isViewAll,
+  currentProfile,
+  profiles,
+  handleProfileSwitch,
+  user,
+  signOut,
+}: {
+  state: { viewMode: ViewMode; currentDate: Date };
+  setViewMode: (mode: ViewMode) => void;
+  weekViewMode: 'list' | 'schedule';
+  onWeekViewModeChange?: (mode: 'list' | 'schedule') => void;
+  handlePrevious: () => void;
+  handleNext: () => void;
+  goToToday: () => void;
+  getMobileDateDisplay: () => string;
+  isViewAll: boolean;
+  currentProfile: Profile | undefined;
+  profiles: Profile[];
+  handleProfileSwitch: (id: string) => void;
+  user: { id: string } | null;
+  signOut: () => void;
+}) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
+
+  const handleViewChange = (mode: ViewMode, weekMode?: 'list' | 'schedule') => {
+    setViewMode(mode);
+    if (weekMode && onWeekViewModeChange) {
+      onWeekViewModeChange(weekMode);
+    }
+    closeSidebar();
+  };
+
+  return (
+    <>
       <div className="md:hidden px-3 py-2">
         <div className="flex items-center justify-between gap-2">
-          {/* Left: View selector dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-1.5 px-2.5 py-1.5 bg-muted/40 hover:bg-muted/60 rounded-lg transition-colors">
-                {state.viewMode === 'day' && <CalendarIcon className="w-3.5 h-3.5 text-muted-foreground" />}
-                {state.viewMode === 'week' && (weekViewMode === 'list' ? <List className="w-3.5 h-3.5 text-muted-foreground" /> : <Clock className="w-3.5 h-3.5 text-muted-foreground" />)}
-                {state.viewMode === 'month' && <CalendarIcon className="w-3.5 h-3.5 text-muted-foreground" />}
-                <span className="text-xs font-mono font-medium">
-                  {state.viewMode === 'day' && 'Day'}
-                  {state.viewMode === 'week' && (weekViewMode === 'list' ? 'List' : 'Schedule')}
-                  {state.viewMode === 'month' && 'Month'}
-                </span>
-                <ChevronDown className="w-3 h-3 text-muted-foreground" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-44 backdrop-blur-xl bg-background/95 border-border/50 shadow-xl">
-              <DropdownMenuItem 
-                onClick={() => setViewMode('day')}
-                className={cn("font-mono text-xs py-2.5 cursor-pointer", state.viewMode === 'day' && "bg-accent/50")}
-              >
-                <CalendarIcon className="w-3.5 h-3.5 mr-2.5 opacity-70" />
-                <span className="flex-1">Day</span>
-                {state.viewMode === 'day' && <Check className="w-3 h-3 text-primary" />}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-border/30" />
-              <DropdownMenuLabel className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/70 py-1">
-                Week View
-              </DropdownMenuLabel>
-              <DropdownMenuItem 
-                onClick={() => { setViewMode('week'); onWeekViewModeChange?.('list'); }}
-                className={cn("font-mono text-xs py-2.5 cursor-pointer", state.viewMode === 'week' && weekViewMode === 'list' && "bg-accent/50")}
-              >
-                <List className="w-3.5 h-3.5 mr-2.5 opacity-70" />
-                <span className="flex-1">List</span>
-                {state.viewMode === 'week' && weekViewMode === 'list' && <Check className="w-3 h-3 text-primary" />}
-              </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={() => { setViewMode('week'); onWeekViewModeChange?.('schedule'); }}
-                className={cn("font-mono text-xs py-2.5 cursor-pointer", state.viewMode === 'week' && weekViewMode === 'schedule' && "bg-accent/50")}
-              >
-                <Clock className="w-3.5 h-3.5 mr-2.5 opacity-70" />
-                <span className="flex-1">Schedule</span>
-                {state.viewMode === 'week' && weekViewMode === 'schedule' && <Check className="w-3 h-3 text-primary" />}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator className="bg-border/30" />
-              <DropdownMenuItem 
-                onClick={() => setViewMode('month')}
-                className={cn("font-mono text-xs py-2.5 cursor-pointer", state.viewMode === 'month' && "bg-accent/50")}
-              >
-                <CalendarIcon className="w-3.5 h-3.5 mr-2.5 opacity-70" />
-                <span className="flex-1">Month</span>
-                {state.viewMode === 'month' && <Check className="w-3 h-3 text-primary" />}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {/* Left: Menu button */}
+          <button 
+            onClick={() => setSidebarOpen(true)}
+            className="w-9 h-9 rounded-lg flex items-center justify-center bg-muted/40 hover:bg-muted/60 transition-colors active:scale-95"
+          >
+            <Menu className="w-4 h-4 text-foreground" />
+          </button>
 
-          {/* Center: Date with swipe-style navigation */}
+          {/* Center: Date with navigation */}
           <div className="flex-1 flex items-center justify-center">
             <div className="flex items-center">
               <button onClick={handlePrevious} className="p-1.5 hover:bg-muted/50 rounded-md transition-colors active:scale-95">
@@ -429,7 +447,7 @@ export function CalendarNav({ onShowKeyboardHelp, weekViewMode = 'list', onWeekV
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-border/30" />
                 {profiles.map((profile) => {
-                  const isActive = !isViewAll && profile.id === currentProfileId;
+                  const isActive = !isViewAll && profile.id === currentProfile?.id;
                   return (
                     <DropdownMenuItem
                       key={profile.id}
@@ -465,6 +483,141 @@ export function CalendarNav({ onShowKeyboardHelp, weekViewMode = 'list', onWeekV
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Sidebar Overlay */}
+      <div 
+        className={cn(
+          "fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm transition-opacity duration-200 md:hidden",
+          sidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        )}
+        onClick={closeSidebar}
+      />
+
+      {/* Sidebar */}
+      <div 
+        className={cn(
+          "fixed top-0 left-0 z-[101] h-full w-[280px] bg-background border-r border-border/50 shadow-2xl md:hidden",
+          "transition-transform duration-200 ease-out",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        {/* Sidebar Header */}
+        <div className="flex items-center justify-between px-4 py-4 border-b border-border/40">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-foreground rounded-lg flex items-center justify-center">
+              <span className="text-background font-bold text-sm">A</span>
+            </div>
+            <span className="font-mono font-semibold text-sm">AeroTodo</span>
+          </div>
+          <button 
+            onClick={closeSidebar}
+            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-muted/50 transition-colors active:scale-95"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* View Options */}
+        <div className="p-3">
+          <p className="px-3 py-2 text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60">Views</p>
+          
+          {/* Day */}
+          <button
+            onClick={() => handleViewChange('day')}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all active:scale-[0.98]",
+              state.viewMode === 'day' 
+                ? "bg-primary/10 text-primary" 
+                : "hover:bg-muted/50 text-foreground"
+            )}
+          >
+            <Sun className="w-5 h-5" />
+            <span className="font-mono text-sm font-medium">Day</span>
+            {state.viewMode === 'day' && <Check className="w-4 h-4 ml-auto" />}
+          </button>
+
+          {/* Week - List */}
+          <button
+            onClick={() => handleViewChange('week', 'list')}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all active:scale-[0.98]",
+              state.viewMode === 'week' && weekViewMode === 'list'
+                ? "bg-primary/10 text-primary" 
+                : "hover:bg-muted/50 text-foreground"
+            )}
+          >
+            <List className="w-5 h-5" />
+            <span className="font-mono text-sm font-medium">Week List</span>
+            {state.viewMode === 'week' && weekViewMode === 'list' && <Check className="w-4 h-4 ml-auto" />}
+          </button>
+
+          {/* Week - Schedule */}
+          <button
+            onClick={() => handleViewChange('week', 'schedule')}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all active:scale-[0.98]",
+              state.viewMode === 'week' && weekViewMode === 'schedule'
+                ? "bg-primary/10 text-primary" 
+                : "hover:bg-muted/50 text-foreground"
+            )}
+          >
+            <Clock className="w-5 h-5" />
+            <span className="font-mono text-sm font-medium">Week Schedule</span>
+            {state.viewMode === 'week' && weekViewMode === 'schedule' && <Check className="w-4 h-4 ml-auto" />}
+          </button>
+
+          {/* Month */}
+          <button
+            onClick={() => handleViewChange('month')}
+            className={cn(
+              "w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all active:scale-[0.98]",
+              state.viewMode === 'month'
+                ? "bg-primary/10 text-primary" 
+                : "hover:bg-muted/50 text-foreground"
+            )}
+          >
+            <LayoutGrid className="w-5 h-5" />
+            <span className="font-mono text-sm font-medium">Month</span>
+            {state.viewMode === 'month' && <Check className="w-4 h-4 ml-auto" />}
+          </button>
+        </div>
+
+        {/* Divider */}
+        <div className="mx-4 border-t border-border/40" />
+
+        {/* Quick Actions */}
+        <div className="p-3">
+          <p className="px-3 py-2 text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60">Quick Actions</p>
+          
+          <button
+            onClick={() => { goToToday(); closeSidebar(); }}
+            className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-muted/50 transition-all active:scale-[0.98] text-foreground"
+          >
+            <CalendarIcon className="w-5 h-5" />
+            <span className="font-mono text-sm font-medium">Go to Today</span>
+          </button>
+
+          <Link href="/settings" onClick={closeSidebar}>
+            <div className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-muted/50 transition-all active:scale-[0.98] text-foreground">
+              <Settings className="w-5 h-5" />
+              <span className="font-mono text-sm font-medium">Settings</span>
+            </div>
+          </Link>
+        </div>
+
+        {/* Bottom Section */}
+        {user && (
+          <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-border/40">
+            <button
+              onClick={() => { signOut(); closeSidebar(); }}
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-destructive/10 transition-all active:scale-[0.98] text-destructive"
+            >
+              <LogOut className="w-5 h-5" />
+              <span className="font-mono text-sm font-medium">Sign Out</span>
+            </button>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
