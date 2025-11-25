@@ -482,133 +482,136 @@ function MobileNav({
         onClick={closeSidebar}
       />
 
-      {/* Sidebar */}
+      {/* Sidebar - Compact with solid background */}
       <div 
         className={cn(
-          "fixed top-0 left-0 z-[101] h-full w-[280px] bg-background/95 backdrop-blur-2xl border-r border-border/50 shadow-2xl md:hidden",
+          "fixed top-0 left-0 z-[101] h-full w-[240px] bg-background border-r border-border/50 shadow-2xl md:hidden",
           "transition-transform duration-200 ease-out",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        {/* Sidebar Header */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-border/40">
+        {/* Sidebar Header - Compact */}
+        <div className="flex items-center justify-between px-3 py-3 border-b border-border/40">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-foreground rounded-lg flex items-center justify-center">
-              <span className="text-background font-bold text-sm">A</span>
+            <div className="w-7 h-7 bg-foreground rounded-lg flex items-center justify-center">
+              <span className="text-background font-bold text-xs">A</span>
             </div>
-            <span className="font-mono font-semibold text-sm">AeroTodo</span>
+            <span className="font-mono font-semibold text-xs">AeroTodo</span>
           </div>
           <button 
             onClick={closeSidebar}
-            className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-muted/50 transition-colors active:scale-95"
+            className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-muted/50 transition-colors active:scale-95"
           >
-            <X className="w-4 h-4" />
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
 
-        {/* View Options */}
-        <div className="p-3">
-          <p className="px-3 py-2 text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60">Views</p>
-          
-          {/* Day */}
-          <button
-            onClick={() => handleViewChange('day')}
-            className={cn(
-              "w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all active:scale-[0.98]",
-              state.viewMode === 'day' 
-                ? "bg-primary/10 text-primary" 
-                : "hover:bg-muted/50 text-foreground"
-            )}
-          >
-            <Sun className="w-5 h-5" />
-            <span className="font-mono text-sm font-medium">Day</span>
-            {state.viewMode === 'day' && <Check className="w-4 h-4 ml-auto" />}
-          </button>
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto pb-20">
+          {/* View Options */}
+          <div className="p-2.5">
+            <p className="px-2.5 py-1.5 text-[9px] font-mono uppercase tracking-wider text-muted-foreground/60">Views</p>
+            
+            {/* Day */}
+            <button
+              onClick={() => handleViewChange('day')}
+              className={cn(
+                "w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg transition-all active:scale-[0.98]",
+                state.viewMode === 'day' 
+                  ? "bg-primary/10 text-primary" 
+                  : "hover:bg-muted/50 text-foreground"
+              )}
+            >
+              <Sun className="w-4.5 h-4.5" />
+              <span className="font-mono text-xs font-medium">Day</span>
+              {state.viewMode === 'day' && <Check className="w-3.5 h-3.5 ml-auto" />}
+            </button>
 
-          {/* Week - List */}
-          <button
-            onClick={() => handleViewChange('week', 'list')}
-            className={cn(
-              "w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all active:scale-[0.98]",
-              state.viewMode === 'week' && weekViewMode === 'list'
-                ? "bg-primary/10 text-primary" 
-                : "hover:bg-muted/50 text-foreground"
-            )}
-          >
-            <List className="w-5 h-5" />
-            <span className="font-mono text-sm font-medium">Week List</span>
-            {state.viewMode === 'week' && weekViewMode === 'list' && <Check className="w-4 h-4 ml-auto" />}
-          </button>
+            {/* Week - List */}
+            <button
+              onClick={() => handleViewChange('week', 'list')}
+              className={cn(
+                "w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg transition-all active:scale-[0.98]",
+                state.viewMode === 'week' && weekViewMode === 'list'
+                  ? "bg-primary/10 text-primary" 
+                  : "hover:bg-muted/50 text-foreground"
+              )}
+            >
+              <List className="w-4.5 h-4.5" />
+              <span className="font-mono text-xs font-medium">Week List</span>
+              {state.viewMode === 'week' && weekViewMode === 'list' && <Check className="w-3.5 h-3.5 ml-auto" />}
+            </button>
 
-          {/* Week - Schedule */}
-          <button
-            onClick={() => handleViewChange('week', 'schedule')}
-            className={cn(
-              "w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all active:scale-[0.98]",
-              state.viewMode === 'week' && weekViewMode === 'schedule'
-                ? "bg-primary/10 text-primary" 
-                : "hover:bg-muted/50 text-foreground"
-            )}
-          >
-            <Clock className="w-5 h-5" />
-            <span className="font-mono text-sm font-medium">Week Schedule</span>
-            {state.viewMode === 'week' && weekViewMode === 'schedule' && <Check className="w-4 h-4 ml-auto" />}
-          </button>
+            {/* Week - Schedule */}
+            <button
+              onClick={() => handleViewChange('week', 'schedule')}
+              className={cn(
+                "w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg transition-all active:scale-[0.98]",
+                state.viewMode === 'week' && weekViewMode === 'schedule'
+                  ? "bg-primary/10 text-primary" 
+                  : "hover:bg-muted/50 text-foreground"
+              )}
+            >
+              <Clock className="w-4.5 h-4.5" />
+              <span className="font-mono text-xs font-medium">Week Schedule</span>
+              {state.viewMode === 'week' && weekViewMode === 'schedule' && <Check className="w-3.5 h-3.5 ml-auto" />}
+            </button>
 
-          {/* Month */}
-          <button
-            onClick={() => handleViewChange('month')}
-            className={cn(
-              "w-full flex items-center gap-3 px-3 py-3 rounded-lg transition-all active:scale-[0.98]",
-              state.viewMode === 'month'
-                ? "bg-primary/10 text-primary" 
-                : "hover:bg-muted/50 text-foreground"
-            )}
-          >
-            <LayoutGrid className="w-5 h-5" />
-            <span className="font-mono text-sm font-medium">Month</span>
-            {state.viewMode === 'month' && <Check className="w-4 h-4 ml-auto" />}
-          </button>
+            {/* Month */}
+            <button
+              onClick={() => handleViewChange('month')}
+              className={cn(
+                "w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg transition-all active:scale-[0.98]",
+                state.viewMode === 'month'
+                  ? "bg-primary/10 text-primary" 
+                  : "hover:bg-muted/50 text-foreground"
+              )}
+            >
+              <LayoutGrid className="w-4.5 h-4.5" />
+              <span className="font-mono text-xs font-medium">Month</span>
+              {state.viewMode === 'month' && <Check className="w-3.5 h-3.5 ml-auto" />}
+            </button>
+          </div>
+
+          {/* Divider */}
+          <div className="mx-3 border-t border-border/40" />
+
+          {/* Quick Actions */}
+          <div className="p-2.5">
+            <p className="px-2.5 py-1.5 text-[9px] font-mono uppercase tracking-wider text-muted-foreground/60">Quick Actions</p>
+            
+            <button
+              onClick={() => { goToToday(); closeSidebar(); }}
+              className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg hover:bg-muted/50 transition-all active:scale-[0.98] text-foreground"
+            >
+              <CalendarIcon className="w-4.5 h-4.5" />
+              <span className="font-mono text-xs font-medium">Go to Today</span>
+            </button>
+
+            <Link href="/settings" onClick={closeSidebar}>
+              <div className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg hover:bg-muted/50 transition-all active:scale-[0.98] text-foreground">
+                <Settings className="w-4.5 h-4.5" />
+                <span className="font-mono text-xs font-medium">Settings</span>
+              </div>
+            </Link>
+          </div>
         </div>
 
-        {/* Divider */}
-        <div className="mx-4 border-t border-border/40" />
-
-        {/* Quick Actions */}
-        <div className="p-3">
-          <p className="px-3 py-2 text-[10px] font-mono uppercase tracking-wider text-muted-foreground/60">Quick Actions</p>
-          
-          <button
-            onClick={() => { goToToday(); closeSidebar(); }}
-            className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-muted/50 transition-all active:scale-[0.98] text-foreground"
-          >
-            <CalendarIcon className="w-5 h-5" />
-            <span className="font-mono text-sm font-medium">Go to Today</span>
-          </button>
-
-          <Link href="/settings" onClick={closeSidebar}>
-            <div className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-muted/50 transition-all active:scale-[0.98] text-foreground">
-              <Settings className="w-5 h-5" />
-              <span className="font-mono text-sm font-medium">Settings</span>
-            </div>
-          </Link>
-        </div>
-
-        {/* Bottom Section */}
-        <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-border/40 bg-background">
+        {/* Bottom Section - Sign In/Out */}
+        <div className="absolute bottom-0 left-0 right-0 p-2.5 border-t border-border/40 bg-background">
           {user ? (
             <button
               onClick={() => { signOut(); closeSidebar(); }}
-              className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-destructive/10 transition-all active:scale-[0.98] text-destructive"
+              className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg hover:bg-destructive/10 transition-all active:scale-[0.98] text-destructive"
             >
-              <LogOut className="w-5 h-5" />
-              <span className="font-mono text-sm font-medium">Sign Out</span>
+              <LogOut className="w-4.5 h-4.5" />
+              <span className="font-mono text-xs font-medium">Sign Out</span>
             </button>
           ) : (
             <Link href="/login" onClick={closeSidebar}>
-              <div className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-primary/10 transition-all active:scale-[0.98] text-primary">
-                <LogOut className="w-5 h-5 rotate-180" />
-                <span className="font-mono text-sm font-medium">Sign In</span>
+              <div className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg hover:bg-primary/10 transition-all active:scale-[0.98] text-primary">
+                <LogOut className="w-4.5 h-4.5 rotate-180" />
+                <span className="font-mono text-xs font-medium">Sign In</span>
               </div>
             </Link>
           )}
