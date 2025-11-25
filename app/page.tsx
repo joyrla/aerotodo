@@ -236,7 +236,7 @@ function CalendarContent() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-background overflow-visible" suppressHydrationWarning>
+    <div className="h-full min-h-[100dvh] flex flex-col bg-background overflow-visible" suppressHydrationWarning>
       {/* Guest warning banner */}
       <GuestWarningBanner onSignUpClick={handleSignUpFromBanner} />
       
@@ -293,8 +293,8 @@ function HomeContent() {
 
 export default function Home() {
   return (
-    <main className="min-h-screen">
-      <Suspense fallback={<div className="min-h-screen bg-background" />}>
+    <main className="h-full min-h-[100dvh]">
+      <Suspense fallback={<div className="h-full min-h-[100dvh] bg-background" />}>
         <HomeContent />
       </Suspense>
     </main>

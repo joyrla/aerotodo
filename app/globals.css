@@ -174,23 +174,31 @@ html {
   /* Optimize for high refresh rate displays */
   -webkit-overflow-scrolling: touch;
   /* Background color for safe area coverage */
-  background-color: hsl(var(--background));
+  background-color: var(--background);
+  /* Full height for PWA */
+  height: 100%;
+  height: 100dvh;
 }
 
 body {
   letter-spacing: var(--tracking-normal);
-  /* PWA safe area support */
+  /* PWA safe area support - use margin instead of padding for edge-to-edge */
   padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
+  /* Bottom safe area handled by content, not body padding */
+  padding-bottom: 0;
   /* Prevent overscroll bounce on iOS */
   overscroll-behavior: none;
   /* Ensure full viewport coverage */
-  min-height: 100vh;
+  min-height: 100%;
   min-height: 100dvh;
+  height: 100%;
+  height: 100dvh;
   /* Background color for safe areas */
-  background-color: hsl(var(--background));
+  background-color: var(--background);
+  /* Prevent white flash on iOS */
+  margin: 0;
 }
 
 /* Native-like scrolling for all scrollable elements */
@@ -252,6 +260,41 @@ body {
   body {
     @apply bg-background text-foreground;
     font-family: 'Space Mono', monospace;
+  }
+}
+
+/* PWA fullscreen support */
+@supports (padding: env(safe-area-inset-bottom)) {
+  /* Ensure content respects bottom safe area when needed */
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  /* For fixed bottom elements */
+  .fixed-bottom-safe {
+    bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Prevent any potential gaps at edges */
+#__next,
+[data-nextjs-scroll-focus-boundary] {
+  height: 100%;
+  min-height: 100dvh;
+}
+
+/* iOS PWA specific fixes */
+@media screen and (display-mode: standalone) {
+  html, body {
+    height: 100%;
+    height: 100dvh;
+    overflow: hidden;
+  }
+  
+  /* Ensure the main content fills the screen */
+  main {
+    height: 100%;
+    min-height: 100dvh;
   }
 }
 

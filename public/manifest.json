@@ -4,9 +4,11 @@
   "description": "A minimal, fast, and beautiful task planner",
   "start_url": "/",
   "display": "standalone",
+  "display_override": ["standalone", "fullscreen"],
   "background_color": "#f7f7f7",
   "theme_color": "#f7f7f7",
-  "orientation": "portrait-primary",
+  "orientation": "any",
+  "scope": "/",
   "icons": [
     {
       "src": "/icon-192.png",
