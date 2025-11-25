@@ -75,8 +75,8 @@ function DialogContent({
           // Mobile sheet - bottom position - smooth spring animation
           mobileSheet && mobilePosition === "bottom" && "md:top-[50%] md:left-[50%] md:translate-x-[-50%] md:translate-y-[-50%] md:rounded-lg md:max-w-lg md:w-full md:max-h-[85vh]",
           mobileSheet && mobilePosition === "bottom" && "inset-x-0 bottom-0 rounded-t-2xl md:inset-auto md:bottom-auto md:rounded-lg",
-          mobileSheet && mobilePosition === "bottom" && "data-[state=open]:animate-[sheetSlideUp_0.24s_cubic-bezier(0.32,0.72,0,1)_forwards]",
-          mobileSheet && mobilePosition === "bottom" && "data-[state=closed]:animate-[sheetSlideDown_0.06s_cubic-bezier(0.4,0,1,1)_forwards]",
+          mobileSheet && mobilePosition === "bottom" && "max-md:data-[state=open]:animate-[sheetSlideUp_0.24s_cubic-bezier(0.32,0.72,0,1)_forwards]",
+          mobileSheet && mobilePosition === "bottom" && "max-md:data-[state=closed]:animate-[sheetSlideDown_0.06s_cubic-bezier(0.4,0,1,1)_forwards]",
           mobileSheet && mobilePosition === "bottom" && "md:data-[state=open]:animate-in md:data-[state=closed]:animate-out md:data-[state=closed]:fade-out-0 md:data-[state=open]:fade-in-0 md:data-[state=closed]:zoom-out-95 md:data-[state=open]:zoom-in-95 md:duration-150",
           // Desktop: centered modal
           !mobileSheet && "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 duration-150 top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] rounded-lg w-full max-w-[calc(100%-2rem)] sm:max-w-lg",
