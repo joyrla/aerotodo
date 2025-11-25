@@ -425,11 +425,11 @@ function MobileNav({
             </div>
           </div>
 
-          {/* Right: Profile + Settings */}
-          <div className="flex items-center gap-1">
+          {/* Right: Profile */}
+          <div className="flex items-center">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-muted/50 transition-colors">
+                <button className="w-9 h-9 rounded-lg flex items-center justify-center hover:bg-muted/50 transition-colors">
                   <span className="text-sm">{isViewAll ? '◈' : currentProfile?.icon}</span>
                 </button>
               </DropdownMenuTrigger>
@@ -464,30 +464,19 @@ function MobileNav({
                 <DropdownMenuItem asChild>
                   <Link href="/settings?section=profiles" className="font-mono cursor-pointer text-xs py-2">
                     <Settings className="h-3.5 w-3.5 mr-2 opacity-70" />
-                    Manage
+                    Manage Profiles
                   </Link>
                 </DropdownMenuItem>
-                {user && (
-                  <DropdownMenuItem onClick={signOut} className="font-mono cursor-pointer text-xs py-2 text-destructive">
-                    <LogOut className="h-3.5 w-3.5 mr-2 opacity-70" />
-                    Sign Out
-                  </DropdownMenuItem>
-                )}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Link href="/settings">
-              <button className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-muted/50 transition-colors">
-                <Settings className="w-4 h-4 text-muted-foreground" />
-              </button>
-            </Link>
           </div>
         </div>
       </div>
 
-      {/* Sidebar Overlay */}
+      {/* Sidebar Overlay - Strong blur for readability */}
       <div 
         className={cn(
-          "fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm transition-opacity duration-200 md:hidden",
+          "fixed inset-0 z-[100] bg-black/60 backdrop-blur-xl transition-all duration-200 md:hidden",
           sidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
         )}
         onClick={closeSidebar}
@@ -496,7 +485,7 @@ function MobileNav({
       {/* Sidebar */}
       <div 
         className={cn(
-          "fixed top-0 left-0 z-[101] h-full w-[280px] bg-background border-r border-border/50 shadow-2xl md:hidden",
+          "fixed top-0 left-0 z-[101] h-full w-[280px] bg-background/95 backdrop-blur-2xl border-r border-border/50 shadow-2xl md:hidden",
           "transition-transform duration-200 ease-out",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
@@ -606,8 +595,8 @@ function MobileNav({
         </div>
 
         {/* Bottom Section */}
-        {user && (
-          <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-border/40">
+        <div className="absolute bottom-0 left-0 right-0 p-3 border-t border-border/40 bg-background">
+          {user ? (
             <button
               onClick={() => { signOut(); closeSidebar(); }}
               className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-destructive/10 transition-all active:scale-[0.98] text-destructive"
@@ -615,8 +604,15 @@ function MobileNav({
               <LogOut className="w-5 h-5" />
               <span className="font-mono text-sm font-medium">Sign Out</span>
             </button>
-          </div>
-        )}
+          ) : (
+            <Link href="/login" onClick={closeSidebar}>
+              <div className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-primary/10 transition-all active:scale-[0.98] text-primary">
+                <LogOut className="w-5 h-5 rotate-180" />
+                <span className="font-mono text-sm font-medium">Sign In</span>
+              </div>
+            </Link>
+          )}
+        </div>
       </div>
     </>
   );
