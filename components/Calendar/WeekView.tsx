@@ -117,7 +117,7 @@ export function WeekView({ viewMode = 'list' }: WeekViewProps) {
                   {/* Day Header - Compact */}
                   <div
                     className={cn(
-                      'mb-2 pb-2 border-b transition-colors flex-shrink-0 flex items-center justify-between h-[32px] sticky top-[57px] z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 lg:static lg:bg-transparent',
+                      'mb-2 pb-2 border-b transition-colors flex-shrink-0 flex items-center justify-between h-[32px] sticky top-[52px] z-10 bg-background pt-2 -mt-2 lg:static lg:bg-transparent lg:pt-0 lg:mt-0',
                       isToday ? 'border-primary' : 'border-border/50'
                     )}
                   >
@@ -184,7 +184,7 @@ export function WeekView({ viewMode = 'list' }: WeekViewProps) {
                   {/* Day Header - Compact */}
                   <div
                     className={cn(
-                      'mb-2 pb-2 border-b transition-colors flex-shrink-0 flex items-center justify-between h-[32px] sticky top-[57px] z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 lg:static lg:bg-transparent',
+                      'mb-2 pb-2 border-b transition-colors flex-shrink-0 flex items-center justify-between h-[32px] sticky top-[52px] z-10 bg-background pt-2 -mt-2 lg:static lg:bg-transparent lg:pt-0 lg:mt-0',
                       isToday ? 'border-primary' : 'border-border/50'
                     )}
                   >
