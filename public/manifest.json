@@ -4,8 +4,8 @@
   "description": "A minimal, fast, and beautiful task planner",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#000000",
+  "background_color": "#f7f7f7",
+  "theme_color": "#f7f7f7",
   "orientation": "portrait-primary",
   "icons": [
     {

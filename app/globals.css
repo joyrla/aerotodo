@@ -168,8 +168,44 @@
   --tracking-widest: calc(var(--tracking-normal) + 0.1em);
 }
 
+html {
+  /* Enable smooth scrolling */
+  scroll-behavior: smooth;
+  /* Optimize for high refresh rate displays */
+  -webkit-overflow-scrolling: touch;
+}
+
 body {
   letter-spacing: var(--tracking-normal);
+  /* PWA safe area support */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  /* Prevent overscroll bounce on iOS */
+  overscroll-behavior: none;
+  /* Ensure full viewport coverage */
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Native-like scrolling for all scrollable elements */
+* {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Optimize touch interactions for 120hz */
+@media (pointer: coarse) {
+  * {
+    /* Reduce motion for smoother feel on touch */
+    scroll-behavior: smooth;
+  }
+  
+  /* Faster touch response */
+  button, a, [role="button"] {
+    touch-action: manipulation;
+  }
 }
 
 /* Hide scrollbar but keep functionality */
