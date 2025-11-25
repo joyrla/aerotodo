@@ -99,7 +99,7 @@ export function WeekView({ viewMode = 'list' }: WeekViewProps) {
       <div className="flex flex-col pb-8">
         {/* Main Week Grid - All 7 Days */}
         <div className="min-w-0 mb-2">
-          <div className="flex flex-col lg:flex-row gap-8 lg:gap-5">
+          <div className="flex flex-col lg:flex-row gap-0 lg:gap-5">
             {weekDays.map((day) => {
               const dateStr = dateHelpers.toISOString(day);
               const dayTasks = taskHelpers.filterTasksByDate(tasks, dateStr);
@@ -114,10 +114,12 @@ export function WeekView({ viewMode = 'list' }: WeekViewProps) {
                     isPast && !isToday && 'opacity-60'
                   )}
                 >
-                  {/* Day Header - Compact */}
+                  {/* Day Header - Sticky on mobile */}
                   <div
                     className={cn(
-                      'mb-2 pb-2 border-b transition-colors flex-shrink-0 flex items-center justify-between h-[32px] sticky top-[52px] z-10 bg-background pt-2 -mt-2 lg:static lg:bg-transparent lg:pt-0 lg:mt-0',
+                      'py-3 border-b transition-colors flex-shrink-0 flex items-center justify-between',
+                      'sticky top-[52px] z-10 bg-background',
+                      'lg:static lg:py-0 lg:mb-2 lg:pb-2 lg:h-[32px]',
                       isToday ? 'border-primary' : 'border-border/50'
                     )}
                   >
@@ -140,7 +142,7 @@ export function WeekView({ viewMode = 'list' }: WeekViewProps) {
                   </div>
 
                   {/* Task List */}
-                  <div className="min-h-[400px]">
+                  <div className="min-h-[100px] lg:min-h-[400px] py-2 lg:py-0">
                     <TaskList
                       date={dateStr}
                       tasks={dayTasks}
@@ -166,7 +168,7 @@ export function WeekView({ viewMode = 'list' }: WeekViewProps) {
       <div className="flex flex-col pb-8">
         {/* Main Week Grid - All 7 Days */}
         <div className="min-w-0 mb-2">
-          <div className="flex flex-col lg:flex-row gap-8 lg:gap-5">
+          <div className="flex flex-col lg:flex-row gap-0 lg:gap-5">
             {weekDays.map((day) => {
               const dateStr = dateHelpers.toISOString(day);
               const dayTasks = taskHelpers.filterTasksByDate(tasks, dateStr);
@@ -181,10 +183,12 @@ export function WeekView({ viewMode = 'list' }: WeekViewProps) {
                     isPast && !isToday && 'opacity-60'
                   )}
                 >
-                  {/* Day Header - Compact */}
+                  {/* Day Header - Sticky on mobile */}
                   <div
                     className={cn(
-                      'mb-2 pb-2 border-b transition-colors flex-shrink-0 flex items-center justify-between h-[32px] sticky top-[52px] z-10 bg-background pt-2 -mt-2 lg:static lg:bg-transparent lg:pt-0 lg:mt-0',
+                      'py-3 border-b transition-colors flex-shrink-0 flex items-center justify-between',
+                      'sticky top-[52px] z-10 bg-background',
+                      'lg:static lg:py-0 lg:mb-2 lg:pb-2 lg:h-[32px]',
                       isToday ? 'border-primary' : 'border-border/50'
                     )}
                   >
@@ -207,7 +211,7 @@ export function WeekView({ viewMode = 'list' }: WeekViewProps) {
                   </div>
 
                   {/* Task List */}
-                  <div className="min-h-[100px] lg:min-h-[400px]">
+                  <div className="min-h-[100px] lg:min-h-[400px] py-2 lg:py-0">
                     <TaskList
                       date={dateStr}
                       tasks={dayTasks}
