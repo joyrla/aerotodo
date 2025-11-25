@@ -23,7 +23,6 @@ export function MonthView() {
   const [hoveredTask, setHoveredTask] = useState<string | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const inputRefs = useRef<Record<string, HTMLInputElement | null>>({});
-  const pendingTaskIdRef = useRef<string | null>(null);
   const savingRef = useRef<boolean>(false);
   const isComposingRef = useRef(false);
   const tasksRef = useRef(tasks);
@@ -116,36 +115,20 @@ export function MonthView() {
   const handleAddTaskButtonClick = (date: Date, e: React.MouseEvent) => {
     e.stopPropagation();
     const dateStr = dateHelpers.toISOString(date);
-    const timestamp = Date.now();
     
-    // Store timestamp to identify the newly created task
-    pendingTaskIdRef.current = timestamp.toString();
-    
-    // Create a new task with empty title
-    addTask({
+    // Create a new task with empty title and immediately open detail modal
+    const newTask = addTask({
       title: '',
       color: 'default',
       completed: false,
       date: dateStr,
     });
-  };
-  
-  // Watch for the newly created task and open the detail modal
-  useEffect(() => {
-    if (pendingTaskIdRef.current) {
-      const timestamp = parseInt(pendingTaskIdRef.current);
-      // Find the task created around this time with empty title
-      const newTask = tasks.find(t => 
-        !t.title && 
-        t.createdAt && 
-        Math.abs(new Date(t.createdAt).getTime() - timestamp) < 1000
-      );
-      if (newTask) {
-        setSelectedTask(newTask.id);
-        pendingTaskIdRef.current = null;
-      }
+    
+    // addTask returns the created task, open modal immediately
+    if (newTask && newTask.id) {
+      setSelectedTask(newTask.id);
     }
-  }, [tasks]);
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent, dateStr: string) => {
     // Ignore Enter key during IME composition (Korean, Japanese, Chinese, etc.)
@@ -215,36 +198,51 @@ export function MonthView() {
     ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
     : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
+  // Helper function for color values
+  const getColorValue = (color: string): string => {
+    const colorMap: Record<string, string> = {
+      default: '#6b7280',
+      blue: '#3b82f6',
+      green: '#10b981',
+      yellow: '#f59e0b',
+      orange: '#f97316',
+      red: '#ef4444',
+      pink: '#ec4899',
+      purple: '#a855f7',
+      teal: '#14b8a6',
+      gray: '#6b7280',
+    };
+    return colorMap[color] || colorMap.default;
+  };
+
   return (
-    <div className="flex flex-col h-full pb-4 px-4 min-h-0">
+    <div className="flex flex-col h-full pb-4 px-2 md:px-4 min-h-0">
       {/* Day Names Header */}
       <div className="grid grid-cols-7 gap-0 mb-0 flex-shrink-0 border-b border-border">
         {dayNames.map((name) => (
           <div
             key={name}
-            className="text-center text-xs uppercase tracking-wider font-mono text-muted-foreground font-semibold py-3"
+            className="text-center text-[10px] md:text-xs uppercase tracking-wider font-mono text-muted-foreground font-semibold py-2 md:py-3"
           >
-            {name}
+            <span className="md:hidden">{name.charAt(0)}</span>
+            <span className="hidden md:inline">{name}</span>
           </div>
         ))}
       </div>
 
       {/* Calendar Grid */}
-      <div className="flex-1 flex flex-col gap-0 min-h-0 border-l border-r border-b border-border">
+      <div className="flex-1 flex flex-col gap-0 min-h-0 border-l border-r border-b border-border overflow-hidden">
         {weeks.map((week, weekIndex) => {
           return (
           <div 
             key={weekIndex} 
             className="grid grid-cols-7 gap-0 min-h-0 border-t border-border"
-            style={{ 
-              flex: '1 1 0%'
-            }}
+            style={{ flex: '1 1 0%', minHeight: '80px' }}
           >
             {week.map((day) => {
               const dateStr = dateHelpers.toISOString(day);
               const dayTasks = taskHelpers.filterTasksByDate(tasks, dateStr);
               
-              // Include multi-day tasks that span through this date
               const multiDayTasks = tasks.filter(task => {
                 if (!task.date || !task.endDate) return false;
                 const taskStart = new Date(task.date);
@@ -253,7 +251,6 @@ export function MonthView() {
                 return currentDay >= taskStart && currentDay <= taskEnd;
               });
               
-              // Combine single-day and multi-day tasks, avoiding duplicates
               const allDayTasks = [...dayTasks];
               multiDayTasks.forEach(multiTask => {
                 if (!allDayTasks.find(t => t.id === multiTask.id)) {
@@ -264,29 +261,44 @@ export function MonthView() {
               const isToday = dateHelpers.isToday(day);
               const isCurrentMonth = dateHelpers.isSameMonth(day, state.currentDate);
               const isPast = dateHelpers.isPast(day);
-
               const isEditing = editingDate === dateStr;
+
+              // Mobile: show dots, Desktop: show task previews
+              // Desktop: show up to 4 tasks, then "+X more" if 6+ tasks. Show all 5 if exactly 5.
+              const showMoreButton = allDayTasks.length > 5;
+              const maxVisibleDesktop = showMoreButton ? 4 : allDayTasks.length;
 
               return (
                 <div
                   key={dateStr}
-                  onClick={(e) => handleDayClick(day, dayTasks, e)}
+                  onClick={(e) => {
+                    // On mobile, always open day detail on tap
+                    if (window.innerWidth < 768) {
+                      e.stopPropagation();
+                      setSelectedDate(day);
+                      return;
+                    }
+                    handleDayClick(day, dayTasks, e);
+                  }}
                   onMouseEnter={() => setHoveredDate(dateStr)}
                   onMouseLeave={() => setHoveredDate(null)}
                   className={cn(
-                    'group relative flex flex-col p-2 border-r border-border transition-all min-h-[100px] cursor-pointer',
-                    'hover:bg-accent/30',
+                    'group relative flex flex-col border-r border-border transition-all cursor-pointer overflow-hidden',
+                    'p-1 md:p-2',
+                    'min-h-[60px] md:min-h-[100px]',
+                    'active:bg-accent/40 md:hover:bg-accent/30',
                     isToday && 'bg-primary/5',
                     !isCurrentMonth && 'bg-muted/30',
                     isPast && !isToday && 'opacity-60'
                   )}
                 >
                   {/* Date Number and Quick Add Input */}
-                  <div className="flex items-start justify-between gap-2 mb-2 flex-shrink-0">
+                  <div className="flex items-start justify-between gap-2 mb-1 md:mb-2 flex-shrink-0">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
                       <div
                         className={cn(
-                          'flex items-center justify-center min-w-[26px] h-[26px] rounded-full text-sm font-semibold font-mono flex-shrink-0',
+                          'flex items-center justify-center rounded-full font-semibold font-mono flex-shrink-0',
+                          'w-6 h-6 text-xs md:min-w-[26px] md:h-[26px] md:text-sm',
                           isToday && 'bg-primary text-primary-foreground',
                           !isToday && isCurrentMonth && 'text-foreground',
                           !isCurrentMonth && 'text-muted-foreground/50'
@@ -295,54 +307,53 @@ export function MonthView() {
                         {dateHelpers.formatDate(day, 'd')}
                       </div>
                       
-                      {/* Quick Add Input - visible on hover or when editing */}
+                      {/* Desktop: Quick Add Input - visible on hover or when editing */}
                       {(hoveredDate === dateStr || isEditing) && (
-                      <div 
-                        className={cn(
-                          'task-input flex-1 h-[26px] flex items-center gap-1 px-1.5 rounded-md',
-                          'transition-all duration-100 ease-out',
-                          'animate-in fade-in slide-in-from-right-1 duration-100',
-                          isEditing ? 'bg-accent/30 border border-primary/50' : 'bg-transparent border border-transparent',
-                          !isEditing && 'group-hover:bg-accent/20 group-hover:border-border/50'
-                        )}
-                      >
-                        <Plus className={cn(
-                          'w-3 h-3 flex-shrink-0 transition-colors',
-                          isEditing ? 'text-primary' : 'text-muted-foreground/50 group-hover:text-muted-foreground'
-                        )} />
-                        <input
-                          ref={(el) => {
-                            inputRefs.current[dateStr] = el;
-                          }}
-                          type="text"
-                          value={isEditing ? newTaskTitle : ''}
-                          onChange={(e) => setNewTaskTitle(e.target.value)}
-                          onKeyDown={(e) => handleKeyDown(e, dateStr)}
-                          onCompositionStart={handleCompositionStart}
-                          onCompositionEnd={handleCompositionEnd}
-                          onBlur={() => handleBlur(dateStr)}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (!isEditing) {
-                              setEditingDate(dateStr);
-                              setNewTaskTitle('');
-                            }
-                          }}
-                          placeholder="Quick Add..."
+                        <div 
                           className={cn(
-                            'flex-1 text-[11px] font-mono bg-transparent border-none outline-none focus:ring-0',
-                            'placeholder:text-muted-foreground/40',
-                            isEditing && 'placeholder:text-muted-foreground/60'
+                            'hidden md:flex task-input flex-1 h-[26px] items-center gap-1 px-1.5 rounded-md',
+                            'transition-all duration-100 ease-out',
+                            'animate-in fade-in slide-in-from-right-1 duration-100',
+                            isEditing ? 'bg-accent/30 border border-primary/50' : 'bg-transparent border border-transparent',
+                            !isEditing && 'group-hover:bg-accent/20 group-hover:border-border/50'
                           )}
-                        />
-                      </div>
+                        >
+                          <Plus className={cn(
+                            'w-3 h-3 flex-shrink-0 transition-colors',
+                            isEditing ? 'text-primary' : 'text-muted-foreground/50 group-hover:text-muted-foreground'
+                          )} />
+                          <input
+                            ref={(el) => { inputRefs.current[dateStr] = el; }}
+                            type="text"
+                            value={isEditing ? newTaskTitle : ''}
+                            onChange={(e) => setNewTaskTitle(e.target.value)}
+                            onKeyDown={(e) => handleKeyDown(e, dateStr)}
+                            onCompositionStart={handleCompositionStart}
+                            onCompositionEnd={handleCompositionEnd}
+                            onBlur={() => handleBlur(dateStr)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!isEditing) {
+                                setEditingDate(dateStr);
+                                setNewTaskTitle('');
+                              }
+                            }}
+                            placeholder="Quick Add..."
+                            className={cn(
+                              'flex-1 text-[11px] font-mono bg-transparent border-none outline-none focus:ring-0',
+                              'placeholder:text-muted-foreground/40',
+                              isEditing && 'placeholder:text-muted-foreground/60'
+                            )}
+                          />
+                        </div>
                       )}
                     </div>
                     
+                    {/* Desktop: Detail Button */}
                     <div
                       onClick={(e) => handleAddTaskButtonClick(day, e)}
                       className={cn(
-                        'detail-button group/add-btn relative flex items-center justify-center w-5 h-5 rounded transition-all duration-200 ease-out cursor-pointer flex-shrink-0',
+                        'hidden md:flex detail-button group/add-btn relative items-center justify-center w-5 h-5 rounded transition-all duration-200 ease-out cursor-pointer flex-shrink-0',
                         'opacity-0 group-hover:opacity-60 hover:opacity-100',
                         'hover:bg-primary/5 active:scale-95',
                         'text-muted-foreground/60 hover:text-primary'
@@ -359,119 +370,93 @@ export function MonthView() {
                       <Edit3 className="w-3 h-3" />
                     </div>
                   </div>
-                  
-                  {/* Task indicators */}
-                  <div className="flex flex-col gap-1 flex-1 min-h-0 overflow-hidden">
-                    {(allDayTasks.length > 5 ? allDayTasks.slice(0, 4) : allDayTasks).map((task) => {
-                      // Get color value for task
-                      const getColorValue = (color: string): string => {
-                        const colorMap: Record<string, string> = {
-                          default: '#6b7280',
-                          blue: '#3b82f6',
-                          green: '#10b981',
-                          yellow: '#f59e0b',
-                          orange: '#f97316',
-                          red: '#ef4444',
-                          pink: '#ec4899',
-                          purple: '#a855f7',
-                          teal: '#14b8a6',
-                          gray: '#6b7280',
-                        };
-                        return colorMap[color] || colorMap.default;
-                      };
 
-                      return (
-                        <div
-                          key={task.id}
-                          onMouseEnter={() => setHoveredTask(task.id)}
-                          onMouseLeave={() => setHoveredTask(null)}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedTask(task.id);
-                          }}
-                          className={cn(
-                            'task-indicator text-xs truncate px-2 py-1 rounded-md font-mono cursor-pointer group/task relative',
-                            'transition-all hover:shadow-sm active:scale-[0.98]',
-                            'flex items-center gap-1.5',
-                            'animate-in fade-in slide-in-from-top-1 duration-100',
-                            task.completed && 'opacity-50'
-                          )}
-                          style={{
-                            backgroundColor: task.color === 'default' 
-                              ? 'rgba(107, 114, 128, 0.1)' 
-                              : `${getColorValue(task.color)}15`,
-                            borderLeft: `3px solid ${getColorValue(task.color)}`,
-                          }}
-                        >
-                          <div 
-                            className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: getColorValue(task.color) }}
-                          />
-                          <span className={cn(
-                            'truncate flex-1',
-                            task.completed && 'line-through'
-                          )}>
-                            {task.title}
-                          </span>
-                          {task.endDate && (
-                            <span className="text-[10px] text-muted-foreground font-mono px-1 bg-muted/50 rounded">
-                              {format(new Date(task.date!), 'd')}~{format(new Date(task.endDate), 'd')}
-                            </span>
-                          )}
-                          
-                          {/* Delete Button - appears on hover */}
-                          {hoveredTask === task.id && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const taskName = task.title?.trim() || 'Untitled task';
-                                const deletedTask = { ...task };
-                                deleteTask(task.id);
-                                toast(`"${taskName}" deleted`, {
-                                  action: {
-                                    label: 'Undo',
-                                    onClick: () => {
-                                      addTask(deletedTask);
-                                    }
-                                  }
-                                });
-                              }}
-                              className={cn(
-                                'absolute right-1 top-1/2 -translate-y-1/2',
-                                'w-5 h-5 flex items-center justify-center rounded',
-                                'bg-background shadow-md border border-border/50',
-                                'text-muted-foreground hover:text-destructive',
-                                'hover:bg-destructive/10 hover:border-destructive/50',
-                                'transition-all duration-200 hover:scale-110',
-                                'animate-in fade-in zoom-in-50 duration-100'
-                              )}
-                              title="Delete task"
-                            >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                    {allDayTasks.length > 5 && (
+                  {/* Mobile: Task List (compact, not clickable - day click handles it) */}
+                  <div className="md:hidden flex flex-col gap-0.5 flex-1 min-h-0 overflow-hidden pointer-events-none">
+                    {allDayTasks.slice(0, 2).map((task) => (
+                      <div
+                        key={task.id}
+                        className={cn(
+                          "text-[9px] leading-tight truncate px-1 py-0.5 rounded font-medium",
+                          task.completed && "opacity-50 line-through"
+                        )}
+                        style={{
+                          backgroundColor: task.color === 'default' 
+                            ? 'rgba(107, 114, 128, 0.15)' 
+                            : `${getColorValue(task.color)}20`,
+                          color: task.color === 'default' 
+                            ? 'hsl(var(--foreground))' 
+                            : getColorValue(task.color),
+                        }}
+                      >
+                        {task.title || 'Untitled'}
+                      </div>
+                    ))}
+                    {allDayTasks.length > 2 && (
+                      <span className="text-[8px] text-muted-foreground font-mono px-1">+{allDayTasks.length - 2}</span>
+                    )}
+                  </div>
+                  
+                  {/* Desktop: Task List */}
+                  <div className="hidden md:flex flex-col gap-1 flex-1 min-h-0 overflow-hidden">
+                    {allDayTasks.slice(0, maxVisibleDesktop).map((task) => (
+                      <div
+                        key={task.id}
+                        onMouseEnter={() => setHoveredTask(task.id)}
+                        onMouseLeave={() => setHoveredTask(null)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedTask(task.id);
+                        }}
+                        className={cn(
+                          'task-indicator text-xs truncate px-2 py-1 rounded-md font-mono cursor-pointer group/task relative',
+                          'transition-all hover:shadow-sm active:scale-[0.98]',
+                          'flex items-center gap-1.5',
+                          task.completed && 'opacity-50'
+                        )}
+                        style={{
+                          backgroundColor: task.color === 'default' 
+                            ? 'rgba(107, 114, 128, 0.1)' 
+                            : `${getColorValue(task.color)}15`,
+                          borderLeft: `3px solid ${getColorValue(task.color)}`,
+                        }}
+                      >
+                        <div 
+                          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: getColorValue(task.color) }}
+                        />
+                        <span className={cn('truncate flex-1', task.completed && 'line-through')}>
+                          {task.title || 'Untitled'}
+                        </span>
+                        {hoveredTask === task.id && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const taskName = task.title?.trim() || 'Untitled task';
+                              const deletedTask = { ...task };
+                              deleteTask(task.id);
+                              toast(`"${taskName}" deleted`, {
+                                action: { label: 'Undo', onClick: () => addTask(deletedTask) }
+                              });
+                            }}
+                            className="absolute right-1 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded bg-background shadow-md border border-border/50 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                    {showMoreButton && (
                       <button 
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedDate(day);
                         }}
-                        className={cn(
-                          'text-xs text-muted-foreground font-mono font-medium cursor-pointer',
-                          'px-2 py-1 rounded-md hover:bg-accent/50 transition-colors text-left',
-                          'hover:text-foreground'
-                        )}
+                        className="text-xs text-muted-foreground font-mono font-medium px-2 py-1 rounded-md hover:bg-accent/50 transition-colors text-left hover:text-foreground"
                       >
                         +{allDayTasks.length - 4} more
                       </button>
                     )}
-                    
-                    {/* Inline task input - removed since we have top input now */}
-                    
-                    {/* Quick add button - removed since we have top input now */}
                   </div>
                 </div>
               );
@@ -482,30 +467,132 @@ export function MonthView() {
       </div>
 
       {/* Day Tasks Modal */}
-      {selectedDate && (
-        <Dialog open={!!selectedDate} onOpenChange={(open) => !open && setSelectedDate(null)}>
-          <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col p-0 gap-0">
-            <DialogHeader className="px-6 pt-6 pb-4 border-b border-border flex-shrink-0">
-              <DialogTitle className="font-mono text-lg font-semibold">
-                {dateHelpers.formatDate(selectedDate, 'EEEE, MMMM d, yyyy')}
-              </DialogTitle>
-              <p className="text-sm text-muted-foreground font-mono mt-1">
-                {taskHelpers.filterTasksByDate(tasks, dateHelpers.toISOString(selectedDate)).length} {
-                  taskHelpers.filterTasksByDate(tasks, dateHelpers.toISOString(selectedDate)).length === 1 ? 'task' : 'tasks'
-                }
-              </p>
-            </DialogHeader>
-            <div className="flex-1 overflow-y-auto min-h-0 px-6 py-4">
-              <TaskList
-                date={dateHelpers.toISOString(selectedDate)}
-                tasks={taskHelpers.filterTasksByDate(tasks, dateHelpers.toISOString(selectedDate))}
-                droppableId={dateHelpers.toISOString(selectedDate)}
-                enableDragDrop={false}
-              />
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
+      {selectedDate && (() => {
+        const dayTasks = taskHelpers.filterTasksByDate(tasks, dateHelpers.toISOString(selectedDate));
+        const isToday = dateHelpers.isToday(selectedDate);
+        const isPast = dateHelpers.isPast(selectedDate) && !isToday;
+        
+        return (
+          <Dialog open={!!selectedDate} onOpenChange={(open) => !open && setSelectedDate(null)}>
+            <DialogContent 
+              mobileSheet={true}
+              showCloseButton={false}
+              className="max-w-lg max-h-[85vh] md:max-h-[80vh] overflow-hidden flex flex-col p-0 gap-0 bg-background/95 backdrop-blur-xl"
+            >
+              {/* Header */}
+              <div className="flex-shrink-0 border-b border-border/50 animate-slide-in-top">
+                {/* Date Display */}
+                <div className="px-5 pt-5 pb-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      {/* Large Date Number */}
+                      <div className={cn(
+                        "w-14 h-14 rounded-2xl flex flex-col items-center justify-center",
+                        isToday 
+                          ? "bg-primary text-primary-foreground" 
+                          : isPast 
+                            ? "bg-muted text-muted-foreground"
+                            : "bg-accent text-foreground"
+                      )}>
+                        <span className="text-2xl font-bold font-mono leading-none">
+                          {dateHelpers.formatDate(selectedDate, 'd')}
+                        </span>
+                        <span className="text-[10px] font-mono uppercase tracking-wider opacity-80">
+                          {dateHelpers.formatDate(selectedDate, 'EEE')}
+                        </span>
+                      </div>
+                      {/* Month & Year */}
+                      <div>
+                        <DialogTitle className="text-lg font-semibold">
+                          {dateHelpers.formatDate(selectedDate, 'MMMM yyyy')}
+                        </DialogTitle>
+                        <p className={cn(
+                          "text-sm font-mono mt-0.5",
+                          isToday ? "text-primary font-medium" : "text-muted-foreground"
+                        )}>
+                          {isToday ? 'Today' : dateHelpers.formatDate(selectedDate, 'EEEE')}
+                        </p>
+                      </div>
+                    </div>
+                    {/* Task Count Badge */}
+                    <div className={cn(
+                      "px-3 py-1.5 rounded-full text-xs font-mono font-medium",
+                      dayTasks.length > 0 
+                        ? "bg-primary/10 text-primary" 
+                        : "bg-muted text-muted-foreground"
+                    )}>
+                      {dayTasks.length} {dayTasks.length === 1 ? 'task' : 'tasks'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Task List */}
+              <div className="flex-1 overflow-y-auto min-h-0">
+                {dayTasks.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 px-6 text-center animate-fade-in">
+                    <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mb-4 animate-scale-in">
+                      <Plus className="w-8 h-8 text-muted-foreground/50" />
+                    </div>
+                    <p className="text-sm text-muted-foreground font-mono mb-1">No tasks yet</p>
+                    <p className="text-xs text-muted-foreground/60">Add a task below to get started</p>
+                  </div>
+                ) : (
+                  <div className="px-5 py-4 animate-slide-in-bottom">
+                    <TaskList
+                      date={dateHelpers.toISOString(selectedDate)}
+                      tasks={dayTasks}
+                      droppableId={`day-modal-${dateHelpers.toISOString(selectedDate)}`}
+                      enableDragDrop={false}
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Footer with Quick Add */}
+              <div className="flex-shrink-0 border-t border-border/50 px-5 py-4 bg-muted/30 animate-slide-in-bottom">
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 relative">
+                    <input
+                      type="text"
+                      placeholder="Add a task..."
+                      className="w-full h-10 px-4 rounded-lg bg-background border border-border/50 text-sm font-mono placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-all"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && (e.target as HTMLInputElement).value.trim()) {
+                          addTask({
+                            title: (e.target as HTMLInputElement).value.trim(),
+                            color: 'default',
+                            completed: false,
+                            date: dateHelpers.toISOString(selectedDate),
+                          });
+                          (e.target as HTMLInputElement).value = '';
+                        }
+                      }}
+                    />
+                  </div>
+                  <button
+                    onClick={() => {
+                      const input = document.querySelector('input[placeholder="Add a task..."]') as HTMLInputElement;
+                      if (input?.value.trim()) {
+                        addTask({
+                          title: input.value.trim(),
+                          color: 'default',
+                          completed: false,
+                          date: dateHelpers.toISOString(selectedDate),
+                        });
+                        input.value = '';
+                      }
+                    }}
+                    className="h-10 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 active:scale-95 transition-all"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
 
       {/* Task Detail Modal */}
       {selectedTask && (() => {

@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Settings, Check, ChevronDown, Keyboard, List, Clock, LogOut } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Settings, Check, ChevronDown, Keyboard, List, Clock, LogOut, Menu, Calendar as CalendarIcon } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ViewMode, TaskColor } from '@/types';
 import { cn } from '@/lib/utils';
@@ -27,7 +27,6 @@ interface CalendarNavProps {
   onWeekViewModeChange?: (mode: 'list' | 'schedule') => void;
 }
 
-// Helper to get color classes for profiles
 const getProfileColorClasses = (color: TaskColor) => {
   const colorMap = {
     blue: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 hover:bg-blue-500/20 hover:border-blue-500/30 hover:text-blue-500',
@@ -127,16 +126,24 @@ export function CalendarNav({ onShowKeyboardHelp, weekViewMode = 'list', onWeekV
     return dateHelpers.formatMonthYear(state.currentDate);
   };
 
+  const getMobileDateDisplay = () => {
+    if (state.viewMode === 'day') {
+      return dateHelpers.formatDate(state.currentDate, 'EEE, MMM d');
+    }
+    return dateHelpers.formatMonthYear(state.currentDate);
+  };
+
   return (
     <div className="glass-nav sticky top-0 z-50 border-b border-border/40">
-      <div className="max-w-[1800px] mx-auto px-4 sm:px-6 py-3">
+      {/* Desktop Nav */}
+      <div className="hidden md:block max-w-[1800px] mx-auto px-6 py-3">
         <div className="relative flex items-center justify-between gap-4">
           {/* Left Section - Date Navigation */}
-          <div className="flex items-center gap-2 sm:gap-4 flex-1 sm:flex-none sm:w-[300px] min-w-0">
-            <h1 className="text-lg sm:text-xl font-bold font-mono truncate tracking-tight text-foreground/90">
+          <div className="flex items-center gap-4 w-[300px]">
+            <h1 className="text-xl font-bold font-mono tracking-tight text-foreground/90">
               {getDateDisplay()}
             </h1>
-            <div className="flex items-center gap-1 flex-shrink-0">
+            <div className="flex items-center gap-1">
               <Button
                 variant="ghost"
                 size="icon"
@@ -164,36 +171,36 @@ export function CalendarNav({ onShowKeyboardHelp, weekViewMode = 'list', onWeekV
           </div>
 
           {/* Center Section - View Mode Switcher */}
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 hidden md:flex items-center">
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center">
             <div className="relative">
-            <Tabs 
-              value={state.viewMode} 
-              onValueChange={(value) => setViewMode(value as ViewMode)}
-              className="w-auto"
-            >
+              <Tabs 
+                value={state.viewMode} 
+                onValueChange={(value) => setViewMode(value as ViewMode)}
+                className="w-auto"
+              >
                 <TabsList className="h-9 p-1 bg-muted/40 border border-border/40 shadow-sm">
-                <TabsTrigger 
-                  value="day" 
+                  <TabsTrigger 
+                    value="day" 
                     className="h-7 px-4 text-xs font-mono font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
-                >
-                  Day
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="week" 
+                  >
+                    Day
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="week" 
                     className="h-7 px-4 text-xs font-mono font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
-                >
-                  Week
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="month" 
+                  >
+                    Week
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="month" 
                     className="h-7 px-4 text-xs font-mono font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all"
-                >
-                  Month
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+                  >
+                    Month
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
               
-              {/* Week View Toggle - Absolutely positioned to prevent layout shift */}
+              {/* Week View Toggle */}
               <div className={cn(
                 "absolute left-full ml-3 top-0 h-full flex items-center transition-all duration-300 ease-out origin-left",
                 state.viewMode === 'week' ? "opacity-100 scale-100 translate-x-0" : "opacity-0 scale-95 -translate-x-2 pointer-events-none"
@@ -231,12 +238,7 @@ export function CalendarNav({ onShowKeyboardHelp, weekViewMode = 'list', onWeekV
           </div>
 
           {/* Right Section - Actions */}
-          <div className="flex items-center justify-end gap-2 flex-shrink-0 sm:w-[300px]">
-            {/* Mobile View Toggle (visible only on small screens) */}
-            <div className="md:hidden flex items-center gap-2 mr-2">
-               {/* Simplified mobile controls could go here if needed, currently relying on bottom bar or other nav on mobile usually, but maintaining functionality for now */}
-            </div>
-
+          <div className="flex items-center justify-end gap-2 w-[300px]">
             {/* Profile Switcher */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -248,11 +250,11 @@ export function CalendarNav({ onShowKeyboardHelp, weekViewMode = 'list', onWeekV
                     'hover:bg-accent/50 hover:border-border',
                     isViewAll 
                       ? 'border-border/60'
-                      : currentProfile && getProfileColorClasses(currentProfile.color).split('hover:')[0] // Use base color
+                      : currentProfile && getProfileColorClasses(currentProfile.color).split('hover:')[0]
                   )}
                 >
                   <span className="text-base leading-none">{isViewAll ? '◈' : currentProfile?.icon}</span>
-                  <span className="hidden sm:inline max-w-[100px] truncate">{isViewAll ? 'View All' : currentProfile?.name}</span>
+                  <span className="max-w-[100px] truncate">{isViewAll ? 'View All' : currentProfile?.name}</span>
                   <ChevronDown className="h-3 w-3 opacity-50" />
                 </Button>
               </DropdownMenuTrigger>
@@ -269,9 +271,7 @@ export function CalendarNav({ onShowKeyboardHelp, weekViewMode = 'list', onWeekV
                 >
                   <span className="text-sm mr-2">◈</span>
                   <span className="flex-1">View All Profiles</span>
-                  {isViewAll && (
-                    <Check className="h-3 w-3 text-primary" />
-                  )}
+                  {isViewAll && <Check className="h-3 w-3 text-primary" />}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-border/50" />
                 {profiles.map((profile) => {
@@ -285,14 +285,9 @@ export function CalendarNav({ onShowKeyboardHelp, weekViewMode = 'list', onWeekV
                         isActive && "bg-accent/50"
                       )}
                     >
-                      <div className={cn(
-                        "w-1.5 h-1.5 rounded-full mr-2.5",
-                        getProfileDotColor(profile.color)
-                      )} />
+                      <div className={cn("w-1.5 h-1.5 rounded-full mr-2.5", getProfileDotColor(profile.color))} />
                       <span className="flex-1">{profile.name}</span>
-                      {isActive && (
-                        <Check className="h-3 w-3 text-primary" />
-                      )}
+                      {isActive && <Check className="h-3 w-3 text-primary" />}
                     </DropdownMenuItem>
                   );
                 })}
@@ -319,71 +314,156 @@ export function CalendarNav({ onShowKeyboardHelp, weekViewMode = 'list', onWeekV
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-8 w-8 hidden sm:flex hover:bg-muted/60 transition-colors"
+                className="h-8 w-8 hover:bg-muted/60 transition-colors"
                 onClick={onShowKeyboardHelp}
                 title="Keyboard shortcuts"
               >
                 <Keyboard className="h-4 w-4 opacity-70" />
-            </Button>
+              </Button>
             )}
             <Link href="/settings">
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-8 w-8 hover:bg-muted/60 transition-colors"
-              >
+              <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted/60 transition-colors">
                 <Settings className="h-4 w-4 opacity-70" />
               </Button>
             </Link>
           </div>
         </div>
-        
-        {/* Mobile View Controls (Tabs) - visible only on mobile */}
-        <div className="md:hidden mt-3 flex justify-center">
-          <Tabs 
-            value={state.viewMode} 
-            onValueChange={(value) => setViewMode(value as ViewMode)}
-            className="w-full max-w-[320px]"
-          >
-            <TabsList className="w-full grid grid-cols-3 h-8 p-1 bg-muted/40">
-              <TabsTrigger value="day" className="text-xs h-6">Day</TabsTrigger>
-              <TabsTrigger value="week" className="text-xs h-6">Week</TabsTrigger>
-              <TabsTrigger value="month" className="text-xs h-6">Month</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-        
-        {/* Mobile Week View Toggle */}
-        {state.viewMode === 'week' && onWeekViewModeChange && (
-          <div className="md:hidden mt-2 flex justify-center animate-in slide-in-from-top-1 fade-in duration-200">
-            <div className="flex items-center bg-muted/40 rounded-lg p-1 border border-border/40 shadow-sm">
-              <button
-                onClick={() => onWeekViewModeChange('list')}
-                className={cn(
-                  'flex items-center gap-1.5 px-4 py-1 rounded-md text-[10px] font-mono font-medium transition-all',
-                  weekViewMode === 'list' 
-                    ? 'bg-background text-foreground shadow-sm' 
-                    : 'text-muted-foreground'
-                )}
-              >
-                <List className="w-3 h-3" />
-                List
+      </div>
+
+      {/* Mobile Nav - Single Row Design */}
+      <div className="md:hidden px-3 py-2">
+        <div className="flex items-center justify-between gap-2">
+          {/* Left: View selector dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex items-center gap-1.5 px-2.5 py-1.5 bg-muted/40 hover:bg-muted/60 rounded-lg transition-colors">
+                {state.viewMode === 'day' && <CalendarIcon className="w-3.5 h-3.5 text-muted-foreground" />}
+                {state.viewMode === 'week' && (weekViewMode === 'list' ? <List className="w-3.5 h-3.5 text-muted-foreground" /> : <Clock className="w-3.5 h-3.5 text-muted-foreground" />)}
+                {state.viewMode === 'month' && <CalendarIcon className="w-3.5 h-3.5 text-muted-foreground" />}
+                <span className="text-xs font-mono font-medium">
+                  {state.viewMode === 'day' && 'Day'}
+                  {state.viewMode === 'week' && (weekViewMode === 'list' ? 'List' : 'Schedule')}
+                  {state.viewMode === 'month' && 'Month'}
+                </span>
+                <ChevronDown className="w-3 h-3 text-muted-foreground" />
               </button>
-              <button
-                onClick={() => onWeekViewModeChange('schedule')}
-                className={cn(
-                  'flex items-center gap-1.5 px-4 py-1 rounded-md text-[10px] font-mono font-medium transition-all',
-                  weekViewMode === 'schedule' 
-                    ? 'bg-background text-foreground shadow-sm' 
-                    : 'text-muted-foreground'
-                )}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-44 backdrop-blur-xl bg-background/95 border-border/50 shadow-xl">
+              <DropdownMenuItem 
+                onClick={() => setViewMode('day')}
+                className={cn("font-mono text-xs py-2.5 cursor-pointer", state.viewMode === 'day' && "bg-accent/50")}
               >
-                <Clock className="w-3 h-3" />
-                Schedule
+                <CalendarIcon className="w-3.5 h-3.5 mr-2.5 opacity-70" />
+                <span className="flex-1">Day</span>
+                {state.viewMode === 'day' && <Check className="w-3 h-3 text-primary" />}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-border/30" />
+              <DropdownMenuLabel className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/70 py-1">
+                Week View
+              </DropdownMenuLabel>
+              <DropdownMenuItem 
+                onClick={() => { setViewMode('week'); onWeekViewModeChange?.('list'); }}
+                className={cn("font-mono text-xs py-2.5 cursor-pointer", state.viewMode === 'week' && weekViewMode === 'list' && "bg-accent/50")}
+              >
+                <List className="w-3.5 h-3.5 mr-2.5 opacity-70" />
+                <span className="flex-1">List</span>
+                {state.viewMode === 'week' && weekViewMode === 'list' && <Check className="w-3 h-3 text-primary" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => { setViewMode('week'); onWeekViewModeChange?.('schedule'); }}
+                className={cn("font-mono text-xs py-2.5 cursor-pointer", state.viewMode === 'week' && weekViewMode === 'schedule' && "bg-accent/50")}
+              >
+                <Clock className="w-3.5 h-3.5 mr-2.5 opacity-70" />
+                <span className="flex-1">Schedule</span>
+                {state.viewMode === 'week' && weekViewMode === 'schedule' && <Check className="w-3 h-3 text-primary" />}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="bg-border/30" />
+              <DropdownMenuItem 
+                onClick={() => setViewMode('month')}
+                className={cn("font-mono text-xs py-2.5 cursor-pointer", state.viewMode === 'month' && "bg-accent/50")}
+              >
+                <CalendarIcon className="w-3.5 h-3.5 mr-2.5 opacity-70" />
+                <span className="flex-1">Month</span>
+                {state.viewMode === 'month' && <Check className="w-3 h-3 text-primary" />}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Center: Date with swipe-style navigation */}
+          <div className="flex-1 flex items-center justify-center">
+            <div className="flex items-center">
+              <button onClick={handlePrevious} className="p-1.5 hover:bg-muted/50 rounded-md transition-colors active:scale-95">
+                <ChevronLeft className="w-4 h-4 text-muted-foreground" />
+              </button>
+              <button 
+                onClick={goToToday}
+                className="px-3 py-1 min-w-[120px] text-center"
+              >
+                <span className="text-sm font-semibold font-mono tracking-tight">{getMobileDateDisplay()}</span>
+              </button>
+              <button onClick={handleNext} className="p-1.5 hover:bg-muted/50 rounded-md transition-colors active:scale-95">
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
               </button>
             </div>
           </div>
-        )}
+
+          {/* Right: Profile + Settings */}
+          <div className="flex items-center gap-1">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-muted/50 transition-colors">
+                  <span className="text-sm">{isViewAll ? '◈' : currentProfile?.icon}</span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52 backdrop-blur-xl bg-background/95 border-border/50 shadow-xl">
+                <DropdownMenuLabel className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground/70">
+                  Profile
+                </DropdownMenuLabel>
+                <DropdownMenuItem
+                  onClick={() => handleProfileSwitch('view-all')}
+                  className={cn("font-mono cursor-pointer text-xs py-2", isViewAll && "bg-accent/50")}
+                >
+                  <span className="text-sm mr-2">◈</span>
+                  <span className="flex-1">View All</span>
+                  {isViewAll && <Check className="h-3 w-3 text-primary" />}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-border/30" />
+                {profiles.map((profile) => {
+                  const isActive = !isViewAll && profile.id === currentProfileId;
+                  return (
+                    <DropdownMenuItem
+                      key={profile.id}
+                      onClick={() => handleProfileSwitch(profile.id)}
+                      className={cn("font-mono cursor-pointer text-xs py-2", isActive && "bg-accent/50")}
+                    >
+                      <div className={cn("w-1.5 h-1.5 rounded-full mr-2.5", getProfileDotColor(profile.color))} />
+                      <span className="flex-1">{profile.name}</span>
+                      {isActive && <Check className="h-3 w-3 text-primary" />}
+                    </DropdownMenuItem>
+                  );
+                })}
+                <DropdownMenuSeparator className="bg-border/30" />
+                <DropdownMenuItem asChild>
+                  <Link href="/settings?section=profiles" className="font-mono cursor-pointer text-xs py-2">
+                    <Settings className="h-3.5 w-3.5 mr-2 opacity-70" />
+                    Manage
+                  </Link>
+                </DropdownMenuItem>
+                {user && (
+                  <DropdownMenuItem onClick={signOut} className="font-mono cursor-pointer text-xs py-2 text-destructive">
+                    <LogOut className="h-3.5 w-3.5 mr-2 opacity-70" />
+                    Sign Out
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Link href="/settings">
+              <button className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-muted/50 transition-colors">
+                <Settings className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );

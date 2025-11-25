@@ -24,12 +24,12 @@ const colorOptions: Array<{ color: TaskColor; value: string; pastelValue: string
   { color: 'red', value: '#ef4444', pastelValue: 'rgba(239, 68, 68, 0.12)', label: 'Red' },
 ];
 
-const repeatOptions: Array<{ value: RepeatPattern; label: string }> = [
-  { value: null, label: 'No repeat' },
-  { value: 'daily', label: 'Daily' },
-  { value: 'weekly', label: 'Weekly' },
-  { value: 'monthly', label: 'Monthly' },
-  { value: 'yearly', label: 'Yearly' },
+const repeatOptions: Array<{ value: RepeatPattern; label: string; icon?: string }> = [
+  { value: null, label: 'No repeat', icon: '✕' },
+  { value: 'daily', label: 'Daily', icon: '📅' },
+  { value: 'weekly', label: 'Weekly', icon: '📆' },
+  { value: 'monthly', label: 'Monthly', icon: '🗓️' },
+  { value: 'yearly', label: 'Yearly', icon: '🎂' },
 ];
 
 interface TaskDetailModalProps {
@@ -49,6 +49,7 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
   const [showNavigateDialog, setShowNavigateDialog] = useState(false);
   const [selectedDateForNavigation, setSelectedDateForNavigation] = useState<Date | null>(null);
   const [optimisticSubtaskStates, setOptimisticSubtaskStates] = useState<Record<string, boolean | null>>({});
+  const [showMobileDatePicker, setShowMobileDatePicker] = useState(false);
 
   // Refs for inputs to capture values on close
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -223,19 +224,500 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
       <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent 
         showCloseButton={false}
-        className="w-full h-full sm:h-auto sm:max-w-2xl bg-background/95 backdrop-blur-xl border-border/50 p-0 gap-0 overflow-hidden shadow-2xl rounded-none sm:rounded-lg"
-        style={{ boxShadow: '0 20px 60px -10px rgba(0, 0, 0, 0.25)' }}
+        mobileSheet={true}
+        mobilePosition="bottom"
+        className="w-full sm:max-w-2xl bg-background border-border/50 p-0 gap-0 overflow-hidden backface-hidden"
         onOpenAutoFocus={(e) => {
-          if (!task.title) {
-            e.preventDefault();
-            requestAnimationFrame(() => titleInputRef.current?.focus());
-          }
+          e.preventDefault();
+          // Delay focus to after animation completes
+          setTimeout(() => {
+            if (!task.title) titleInputRef.current?.focus();
+          }, 200);
         }}
       >
           <DialogTitle className="sr-only">Edit Task</DialogTitle>
         
-        {/* Header Area */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/40 bg-muted/10">
+        {/* Mobile - Fixed height bottom sheet that doesn't move with keyboard */}
+        <div className="md:hidden flex flex-col h-[82dvh] max-h-[82dvh] bg-background">
+
+          {/* TOP SECTION: All interactive elements (stays visible with keyboard) */}
+          <div className="flex-shrink-0 px-4 pt-4 pb-3 space-y-3 overflow-visible">
+            
+            {/* Row 1: Title with Checkbox & Close */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => toggleTaskComplete(task.id)}
+                className={cn(
+                  'w-5 h-5 rounded-full border flex items-center justify-center flex-shrink-0 transition-all active:scale-90',
+                  task.completed 
+                    ? 'bg-primary border-primary' 
+                    : 'border-muted-foreground/40'
+                )}
+              >
+                {task.completed && <Check className="w-3 h-3 text-primary-foreground" strokeWidth={3} />}
+              </button>
+              
+              <Input
+                ref={titleInputRef}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                onBlur={handleSaveTitle}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSaveTitle();
+                    handleClose(false);
+                  }
+                }}
+                placeholder="Add task..."
+                className={cn(
+                  'flex-1 text-sm font-mono border-none shadow-none focus-visible:ring-0 px-0 h-auto bg-transparent placeholder:text-muted-foreground/50 leading-relaxed',
+                  task.completed && 'line-through text-muted-foreground'
+                )}
+              />
+              
+              <button
+                onClick={() => handleClose(false)}
+                className="p-2 -mr-2 rounded-full text-muted-foreground active:bg-muted transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Row 2: Quick Actions - All using Popovers for consistent dropdown behavior */}
+            <div className="flex items-center gap-1.5 pb-1 overflow-x-auto scrollbar-hide -mx-4 px-4">
+              {/* Date */}
+              <Popover open={showMobileDatePicker} onOpenChange={setShowMobileDatePicker}>
+                <PopoverTrigger asChild>
+                  <button className={cn(
+                    "inline-flex items-center gap-1 h-7 px-2 rounded-md text-xs font-mono transition-colors flex-none",
+                    task.date ? "bg-primary/10 text-primary" : "bg-muted/30 text-muted-foreground"
+                  )}>
+                    <CalendarIcon className="w-3 h-3 flex-none" />
+                    <span className="flex-none">{task.date ? format(new Date(task.date), 'EEE, MMM d') : 'Date'}</span>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent 
+                  className="w-[280px] p-0" 
+                  align="start" 
+                  side="bottom" 
+                  sideOffset={4}
+                >
+                  {/* Quick Date Shortcuts - 4 columns */}
+                  <div className="border-b border-border/50 p-2">
+                    <div className="grid grid-cols-4 gap-1">
+                      <button
+                        onClick={() => {
+                          const today = new Date();
+                          updateTask(task.id, { date: dateHelpers.toISOString(today) });
+                          setShowMobileDatePicker(false);
+                        }}
+                        className={cn(
+                          "py-1.5 text-[10px] font-mono rounded-md transition-all active:scale-95",
+                          task.date && dateHelpers.isToday(new Date(task.date))
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted/50 text-foreground hover:bg-muted"
+                        )}
+                      >
+                        Today
+                      </button>
+                      <button
+                        onClick={() => {
+                          const tomorrow = new Date();
+                          tomorrow.setDate(tomorrow.getDate() + 1);
+                          updateTask(task.id, { date: dateHelpers.toISOString(tomorrow) });
+                          setShowMobileDatePicker(false);
+                        }}
+                        className="py-1.5 text-[10px] font-mono rounded-md bg-muted/50 text-foreground hover:bg-muted transition-all active:scale-95"
+                      >
+                        Tomorrow
+                      </button>
+                      <button
+                        onClick={() => {
+                          // Get next Saturday
+                          const today = new Date();
+                          const dayOfWeek = today.getDay();
+                          const daysUntilSaturday = dayOfWeek === 6 ? 7 : (6 - dayOfWeek);
+                          const weekend = new Date(today);
+                          weekend.setDate(today.getDate() + daysUntilSaturday);
+                          updateTask(task.id, { date: dateHelpers.toISOString(weekend) });
+                          setShowMobileDatePicker(false);
+                        }}
+                        className="py-1.5 text-[10px] font-mono rounded-md bg-muted/50 text-foreground hover:bg-muted transition-all active:scale-95"
+                      >
+                        Weekend
+                      </button>
+                      <button
+                        onClick={() => {
+                          const nextWeek = new Date();
+                          nextWeek.setDate(nextWeek.getDate() + 7);
+                          updateTask(task.id, { date: dateHelpers.toISOString(nextWeek) });
+                          setShowMobileDatePicker(false);
+                        }}
+                        className="py-1.5 text-[10px] font-mono rounded-md bg-muted/50 text-foreground hover:bg-muted transition-all active:scale-95"
+                      >
+                        +1 Week
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Compact Calendar */}
+                  <div className="p-1">
+                    <Calendar
+                      mode="single"
+                      selected={task.date ? new Date(task.date) : undefined}
+                      onSelect={(date) => {
+                        updateTask(task.id, { date: date ? dateHelpers.toISOString(date) : null });
+                        setShowMobileDatePicker(false);
+                      }}
+                      modifiersClassNames={{
+                        selected: "!bg-muted !text-muted-foreground font-medium",
+                        today: "bg-primary text-primary-foreground font-semibold",
+                      }}
+                      classNames={{
+                        months: "flex flex-col relative",
+                        month: "space-y-2",
+                        month_caption: "flex items-center justify-center h-8 px-8",
+                        caption_label: "text-xs font-medium font-mono",
+                        nav: "flex items-center w-full absolute top-0 inset-x-0 justify-between px-1 h-8",
+                        button_previous: "h-7 w-7 bg-transparent p-0 opacity-60 hover:opacity-100 transition-colors rounded-md hover:bg-muted inline-flex items-center justify-center",
+                        button_next: "h-7 w-7 bg-transparent p-0 opacity-60 hover:opacity-100 transition-colors rounded-md hover:bg-muted inline-flex items-center justify-center",
+                        table: "w-full border-collapse",
+                        weekdays: "flex",
+                        weekday: "text-muted-foreground rounded-md w-9 font-normal text-[10px] flex-1 text-center",
+                        week: "flex w-full mt-1",
+                        day: "relative p-0 text-center text-xs focus-within:relative focus-within:z-20 flex-1",
+                        day_button: cn(
+                          "h-9 w-9 p-0 font-normal font-mono rounded-md inline-flex items-center justify-center transition-colors",
+                          "hover:bg-accent hover:text-accent-foreground"
+                        ),
+                        outside: "text-muted-foreground opacity-40",
+                        disabled: "text-muted-foreground opacity-40",
+                        hidden: "invisible",
+                      }}
+                    />
+                  </div>
+
+                  {/* Move to Inbox / Clear Date */}
+                  {task.date && (
+                    <div className="px-2 pb-2">
+                      <button
+                        onClick={() => {
+                          updateTask(task.id, { date: null });
+                          setShowMobileDatePicker(false);
+                        }}
+                        className="w-full py-1.5 text-[10px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md transition-all active:scale-95 border border-border/50"
+                      >
+                        Move to Inbox
+                      </button>
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
+
+              {/* Time */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className={cn(
+                    "inline-flex items-center gap-1 h-7 px-2 rounded-md text-[11px] font-mono transition-colors whitespace-nowrap",
+                    task.timeSlot ? "bg-orange-500/10 text-orange-600" : "bg-muted/30 text-muted-foreground"
+                  )}>
+                    <Clock className="w-3 h-3 shrink-0" />
+                    <span>{task.timeSlot ? (() => {
+                      const formatTime = (time: string) => {
+                        const [h, m] = time.split(':').map(Number);
+                        const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+                        const ampm = h >= 12 ? 'PM' : 'AM';
+                        return `${hour12}:${String(m).padStart(2, '0')} ${ampm}`;
+                      };
+                      return `${formatTime(task.timeSlot.start)} - ${formatTime(task.timeSlot.end)}`;
+                    })() : 'Time'}</span>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[240px] p-3" align="start" side="bottom" sideOffset={4}>
+                  <div className="space-y-3">
+                    {/* Time Range */}
+                    <div className="flex items-center gap-3">
+                      {/* Start */}
+                      <div className="relative flex-1 min-w-[85px]">
+                        <input
+                          type="time"
+                          value={task.timeSlot?.start || '09:00'}
+                          onChange={(e) => {
+                            handleTimeSlotChange({ 
+                              start: e.target.value, 
+                              end: task.timeSlot?.end || '10:00' 
+                            });
+                          }}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                        <div className="h-9 px-3 flex items-center justify-center text-sm font-mono bg-orange-500/10 text-orange-600 rounded-lg whitespace-nowrap">
+                          {(() => {
+                            const time = task.timeSlot?.start || '09:00';
+                            const [h, m] = time.split(':').map(Number);
+                            const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+                            const ampm = h >= 12 ? 'PM' : 'AM';
+                            return `${hour12}:${String(m).padStart(2, '0')} ${ampm}`;
+                          })()}
+                        </div>
+                      </div>
+                      
+                      <span className="text-muted-foreground/40 text-sm font-mono">–</span>
+                      
+                      {/* End */}
+                      <div className="relative flex-1 min-w-[85px]">
+                        <input
+                          type="time"
+                          value={task.timeSlot?.end || '10:00'}
+                          onChange={(e) => {
+                            handleTimeSlotChange({ 
+                              start: task.timeSlot?.start || '09:00', 
+                              end: e.target.value 
+                            });
+                          }}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                        <div className="h-9 px-3 flex items-center justify-center text-sm font-mono bg-muted/40 text-foreground rounded-lg whitespace-nowrap">
+                          {(() => {
+                            const time = task.timeSlot?.end || '10:00';
+                            const [h, m] = time.split(':').map(Number);
+                            const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+                            const ampm = h >= 12 ? 'PM' : 'AM';
+                            return `${hour12}:${String(m).padStart(2, '0')} ${ampm}`;
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Duration shortcuts */}
+                    <div className="flex gap-1.5">
+                      {[{ l: '15m', m: 15 }, { l: '30m', m: 30 }, { l: '1h', m: 60 }, { l: '2h', m: 120 }].map((d) => (
+                        <button
+                          key={d.l}
+                          onClick={() => {
+                            const start = task.timeSlot?.start || '09:00';
+                            const [h, m] = start.split(':').map(Number);
+                            const end = new Date(2000, 0, 1, h, m + d.m);
+                            handleTimeSlotChange({ start, end: `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}` });
+                          }}
+                          className="flex-1 py-1.5 text-xs font-mono rounded-md bg-muted/30 text-muted-foreground hover:bg-orange-500/10 hover:text-orange-600 transition-colors"
+                        >
+                          {d.l}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Remove button */}
+                    {task.timeSlot && (
+                      <button
+                        onClick={() => handleTimeSlotChange(null)}
+                        className="w-full py-1 text-[10px] font-mono text-muted-foreground hover:text-destructive transition-colors"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              {/* Color */}
+              <Popover open={showColorPicker} onOpenChange={setShowColorPicker}>
+                <PopoverTrigger asChild>
+                  <button
+                    onClick={() => setShowColorPicker(!showColorPicker)}
+                    className={cn(
+                      "w-7 h-7 rounded-md flex items-center justify-center transition-colors shrink-0",
+                      task.color === 'default' && "bg-muted/30"
+                    )}
+                    style={{
+                      backgroundColor: task.color !== 'default'
+                        ? colorOptions.find(c => c.color === task.color)?.pastelValue
+                        : undefined
+                    }}
+                  >
+                    <Palette
+                      className="w-3 h-3"
+                      style={{ color: task.color !== 'default'
+                        ? colorOptions.find(c => c.color === task.color)?.value
+                        : 'hsl(var(--muted-foreground))' }}
+                    />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                  className="w-auto p-1.5"
+                  align="start"
+                  side="bottom"
+                  sideOffset={4}
+                >
+                  <div className="flex flex-col gap-1">
+                    {colorOptions.map(({ color, pastelValue, value, label }) => {
+                      const isSelected = task.color === color;
+                      return (
+                        <button
+                          key={color}
+                          onClick={() => {
+                            updateTask(task.id, { color });
+                            setShowColorPicker(false);
+                          }}
+                          className={cn(
+                            "w-7 h-7 rounded-full transition-all duration-150 flex items-center justify-center",
+                            "hover:opacity-80",
+                            isSelected && "ring-2 ring-offset-1 ring-offset-background"
+                          )}
+                          style={{ 
+                            backgroundColor: pastelValue,
+                            ...(isSelected && { ringColor: value })
+                          }}
+                          title={label}
+                        >
+                          {isSelected && (
+                            <Check className="w-3 h-3" style={{ color: value }} strokeWidth={3} />
+                          )}
+                        </button>
+                      );
+                    })}
+                    {/* No color option - just X on white */}
+                    <button
+                      onClick={() => {
+                        updateTask(task.id, { color: 'default' });
+                        setShowColorPicker(false);
+                      }}
+                      className="w-7 h-7 flex items-center justify-center transition-opacity hover:opacity-60"
+                      title="No highlight"
+                    >
+                      <X className="w-3.5 h-3.5 text-muted-foreground" />
+                    </button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              {/* Repeat */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className={cn(
+                    "flex items-center gap-1 h-7 px-2 rounded-md text-xs font-mono transition-colors shrink-0",
+                    task.repeatPattern ? "bg-violet-500/10 text-violet-600" : "bg-muted/30 text-muted-foreground"
+                  )}>
+                    <Repeat className="w-3 h-3" />
+                    {task.repeatPattern && <span>{repeatOptions.find(r => r.value === task.repeatPattern)?.label}</span>}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[110px] p-1" align="start" side="bottom" sideOffset={4}>
+                  <div className="space-y-0.5">
+                    {repeatOptions.map((opt) => (
+                      <button
+                        key={opt.label}
+                        onClick={() => updateTask(task.id, { repeatPattern: opt.value })}
+                        className={cn(
+                          "w-full text-left px-2 py-1.5 text-[11px] font-mono rounded transition-colors",
+                          task.repeatPattern === opt.value 
+                            ? "bg-violet-500/10 text-violet-600" 
+                            : "hover:bg-muted/50 text-foreground"
+                        )}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+            </div>
+          </div>
+
+          {/* SCROLLABLE SECTION: Subtasks & Notes */}
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 overscroll-contain">
+            
+            {/* Subtasks Section */}
+            <div>
+              <div className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wide mb-2 flex items-center justify-between">
+                <span>Subtasks</span>
+                {task.subtasks && task.subtasks.length > 0 && (
+                  <span className="text-[10px] font-mono bg-muted/50 px-2 py-0.5 rounded-full">
+                    {task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}
+                  </span>
+                )}
+              </div>
+              
+              <div className="space-y-1">
+                {/* Existing Subtasks */}
+                {task.subtasks?.map(subtask => (
+                  <div 
+                    key={subtask.id} 
+                    className="flex items-center gap-3 py-2 px-3 -mx-3 rounded-lg active:bg-muted/50 transition-colors"
+                  >
+                    <button
+                      onClick={() => handleToggleSubtask(subtask.id)}
+                      className={cn(
+                        "w-4 h-4 rounded-full border flex items-center justify-center flex-shrink-0 transition-all active:scale-90",
+                        subtask.completed ? "bg-primary border-primary" : "border-muted-foreground/40"
+                      )}
+                    >
+                      {subtask.completed && <Check className="w-2.5 h-2.5 text-primary-foreground" strokeWidth={3} />}
+                    </button>
+                    <span className={cn(
+                      "flex-1 text-sm font-mono leading-relaxed",
+                      subtask.completed && "line-through text-muted-foreground"
+                    )}>
+                      {subtask.title}
+                    </span>
+                    <button
+                      onClick={() => handleDeleteSubtask(subtask.id)}
+                      className="p-1.5 -mr-1.5 rounded-lg text-muted-foreground/30 active:text-destructive active:bg-destructive/10 transition-all"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+
+                {/* Add New Subtask Row - same style as main task list input */}
+                <div className="flex items-center gap-3 py-2 px-3 -mx-3 rounded-lg">
+                  <div className="w-4 h-4 rounded-full border border-dashed border-muted-foreground/30 flex-shrink-0" />
+                  <input
+                    ref={subtaskInputRef}
+                    value={newSubtask}
+                    onChange={(e) => setNewSubtask(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddSubtask()}
+                    onBlur={handleAddSubtask}
+                    placeholder="Add subtask..."
+                    className="flex-1 text-sm font-mono bg-transparent border-none focus:ring-0 p-0 placeholder:text-muted-foreground/50 leading-relaxed"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div>
+              <div className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                <AlignLeft className="w-3 h-3" />
+                <span>Notes</span>
+              </div>
+              <textarea
+                ref={notesTextareaRef}
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                onBlur={handleSaveNotes}
+                placeholder="Add notes..."
+                rows={3}
+                className="w-full text-sm bg-muted/20 rounded-lg border border-border/30 resize-none placeholder:text-muted-foreground/40 focus:ring-1 focus:ring-primary/30 focus:border-primary/30 p-2.5"
+              />
+            </div>
+
+            {/* Keyboard spacer - smaller */}
+            <div className="h-32" />
+          </div>
+
+          {/* Floating Delete Button - Material Design FAB position */}
+          <button
+            onClick={handleDelete}
+            className="absolute bottom-4 right-4 w-10 h-10 rounded-lg flex items-center justify-center bg-muted/50 text-muted-foreground hover:bg-red-500/10 hover:text-red-500 active:scale-95 transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Desktop Header Area */}
+        <div className="hidden md:flex items-center justify-between px-6 py-4 border-b border-border/40 bg-muted/10">
           <div className="flex items-center gap-3">
               <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
                 <PopoverTrigger asChild>
@@ -291,21 +773,21 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
               </div>
         </div>
 
-        {/* Main Body */}
-        <div className="px-8 py-6 space-y-8 max-h-[75vh] overflow-y-auto scrollbar-thin scrollbar-thumb-border">
+        {/* Main Body - Desktop only, mobile shows compact version above */}
+        <div className="hidden md:block px-8 py-6 space-y-8 max-h-[75vh] overflow-y-auto scrollbar-thin scrollbar-thumb-border">
           
           {/* Title Input */}
           <div className="flex items-center gap-4">
               <button
                 onClick={() => toggleTaskComplete(task.id)}
                 className={cn(
-                  'w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all duration-200',
+                  'w-5 h-5 rounded-full border flex items-center justify-center flex-shrink-0 transition-all duration-200',
                   task.completed
                     ? 'bg-primary border-primary'
-                    : 'border-muted-foreground/30 hover:border-primary'
+                    : 'border-muted-foreground/40 hover:border-primary'
                 )}
               >
-                {task.completed && <Check className="w-3.5 h-3.5 text-primary-foreground" strokeWidth={3} />}
+                {task.completed && <Check className="w-3 h-3 text-primary-foreground" strokeWidth={3} />}
               </button>
             <div className="flex-1">
                 <Input
@@ -315,14 +797,14 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
                   onBlur={handleSaveTitle}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
-                      e.preventDefault(); // Prevent default form submission if any
+                      e.preventDefault();
                       handleSaveTitle();
-                      handleClose(false); // Close on Enter
+                      handleClose(false);
                     }
                   }}
-                  placeholder="Task title"
+                  placeholder="Add task..."
               className={cn(
-                    'text-xl font-medium border-none shadow-none focus-visible:ring-0 px-0 h-auto bg-transparent placeholder:text-muted-foreground/40',
+                    'text-base font-mono border-none shadow-none focus-visible:ring-0 px-0 h-auto bg-transparent placeholder:text-muted-foreground/50 leading-relaxed',
                     task.completed && 'line-through text-muted-foreground'
                   )}
                 />
@@ -464,7 +946,7 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
           </button>
 
                   {/* Add to GCal - Coming Soon */}
-          <button
+            <button
             disabled
             className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-mono border border-border/40 text-muted-foreground/50 cursor-not-allowed"
             title="Google Calendar sync coming soon"
@@ -472,7 +954,7 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
             <CalendarCheck className="w-3.5 h-3.5" />
             <span>GCal</span>
             <span className="text-[9px] bg-muted px-1 py-0.5 rounded">Soon</span>
-          </button>
+            </button>
         </div>
              </div>
           </div>
@@ -490,64 +972,78 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
           </div>
 
           {/* Subtasks */}
-          <div className="pl-10 space-y-3">
-             <div className="flex flex-col gap-1">
-               {task.subtasks?.map(subtask => (
-                 <div key={subtask.id} className="flex items-center gap-3 group min-h-[32px]">
-                <button
-                      onClick={() => handleToggleSubtask(subtask.id)}
-                  className={cn(
-                        "group/checkbox flex-shrink-0 flex items-center justify-center",
-                        "p-2 -m-2", // Bigger hit area
-                        "transition-all duration-200 ease-out"
-                      )}
-                    >
-                      <div className={cn(
-                        "w-4 h-4 rounded-full border flex items-center justify-center",
-                        "transition-all duration-200 ease-out",
-                        "group-hover/checkbox:scale-110 group-active/checkbox:scale-90",
-                        subtask.completed
-                          ? "bg-primary border-primary text-primary-foreground"
-                          : "border-muted-foreground/40 group-hover/checkbox:border-primary/60 bg-transparent"
-                      )}>
-                        {subtask.completed && <Check className="w-2.5 h-2.5" strokeWidth={3} />}
-                      </div>
-                </button>
-                    <span className={cn(
-                      "text-sm font-mono flex-1 leading-relaxed transition-colors",
-                      subtask.completed ? "line-through text-muted-foreground" : "text-foreground"
-                    )}>
-                  {subtask.title}
-                </span>
-                <button
-                  onClick={() => handleDeleteSubtask(subtask.id)}
-                  className={cn(
-                        "opacity-0 group-hover:opacity-100 p-1 rounded",
-                        "text-muted-foreground hover:text-destructive transition-all duration-200",
-                        "hover:bg-destructive/10 hover:scale-110"
-                  )}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-               ))}
+          <div className="pl-10 space-y-1">
+             {/* Subtasks Header */}
+             <div className="flex items-center justify-between mb-2">
+               <label className="text-[10px] uppercase tracking-wider font-mono text-muted-foreground font-semibold">
+                 Subtasks
+               </label>
+               {task.subtasks && task.subtasks.length > 0 && (
+                 <span className="text-[10px] font-mono text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">
+                   {task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}
+                 </span>
+               )}
              </div>
              
-             <div className="flex items-center gap-3 text-muted-foreground/60 pl-0.5">
-               <Plus className="w-4 h-4" />
+             {/* Existing Subtasks */}
+             {task.subtasks?.map(subtask => (
+               <div key={subtask.id} className="flex items-center gap-3 group py-2 px-3 -mx-3 rounded-lg hover:bg-muted/30 transition-colors">
+                 <button
+                   onClick={() => handleToggleSubtask(subtask.id)}
+                   className={cn(
+                     "group/checkbox flex-shrink-0 flex items-center justify-center",
+                     "p-2 -m-2",
+                     "transition-all duration-200 ease-out"
+                   )}
+                 >
+                   <div className={cn(
+                     "w-4 h-4 rounded-full border flex items-center justify-center",
+                     "transition-all duration-200 ease-out",
+                     "group-hover/checkbox:scale-110 group-active/checkbox:scale-90",
+                     subtask.completed
+                       ? "bg-primary border-primary text-primary-foreground"
+                       : "border-muted-foreground/40 group-hover/checkbox:border-primary/60 bg-transparent"
+                   )}>
+                     {subtask.completed && <Check className="w-2.5 h-2.5" strokeWidth={3} />}
+                   </div>
+                 </button>
+                 <span className={cn(
+                   "text-sm font-mono flex-1 leading-relaxed transition-colors",
+                   subtask.completed ? "line-through text-muted-foreground" : "text-foreground"
+                 )}>
+                   {subtask.title}
+                 </span>
+                 <button
+                   onClick={() => handleDeleteSubtask(subtask.id)}
+                   className={cn(
+                     "opacity-0 group-hover:opacity-100 p-1 rounded",
+                     "text-muted-foreground hover:text-destructive transition-all duration-200",
+                     "hover:bg-destructive/10 hover:scale-110"
+                   )}
+                 >
+                   <Trash2 className="w-3.5 h-3.5" />
+                 </button>
+               </div>
+             ))}
+             
+             {/* Add Subtask Row - matches main task list input style */}
+             <div className="flex items-center gap-3 py-2 px-3 -mx-3 rounded-lg">
+               <div className="w-4 h-4 rounded-full border border-dashed border-muted-foreground/30 flex-shrink-0" />
                <input
-                ref={subtaskInputRef}
-                value={newSubtask}
-                onChange={(e) => setNewSubtask(e.target.value)}
+                 ref={subtaskInputRef}
+                 value={newSubtask}
+                 onChange={(e) => setNewSubtask(e.target.value)}
                  onKeyDown={(e) => e.key === 'Enter' && handleAddSubtask()}
-                onBlur={handleAddSubtask}
-                 placeholder="Add subtask"
-                 className="bg-transparent border-none text-sm font-mono focus:ring-0 p-0 placeholder:text-muted-foreground/60 flex-1"
+                 onBlur={handleAddSubtask}
+                 placeholder="Add subtask..."
+                 className="bg-transparent border-none text-sm font-mono focus:ring-0 p-0 placeholder:text-muted-foreground/50 flex-1 leading-relaxed"
                />
-            </div>
+             </div>
           </div>
+        </div>
 
-              </div>
+        {/* Mobile drag handle indicator at bottom */}
+        <div className="md:hidden h-6" />
 
         </DialogContent>
       </Dialog>

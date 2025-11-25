@@ -114,12 +114,11 @@ export function WeekView({ viewMode = 'list' }: WeekViewProps) {
                     isPast && !isToday && 'opacity-60'
                   )}
                 >
-                  {/* Day Header - Sticky on mobile */}
+                  {/* Day Header */}
                   <div
                     className={cn(
                       'py-3 border-b transition-colors flex-shrink-0 flex items-center justify-between',
-                      'sticky top-[52px] z-10 bg-background',
-                      'lg:static lg:py-0 lg:mb-2 lg:pb-2 lg:h-[32px]',
+                      'lg:py-0 lg:mb-2 lg:pb-2 lg:h-[32px]',
                       isToday ? 'border-primary' : 'border-border/50'
                     )}
                   >
@@ -183,12 +182,11 @@ export function WeekView({ viewMode = 'list' }: WeekViewProps) {
                     isPast && !isToday && 'opacity-60'
                   )}
                 >
-                  {/* Day Header - Sticky on mobile */}
+                  {/* Day Header */}
                   <div
                     className={cn(
                       'py-3 border-b transition-colors flex-shrink-0 flex items-center justify-between',
-                      'sticky top-[52px] z-10 bg-background',
-                      'lg:static lg:py-0 lg:mb-2 lg:pb-2 lg:h-[32px]',
+                      'lg:py-0 lg:mb-2 lg:pb-2 lg:h-[32px]',
                       isToday ? 'border-primary' : 'border-border/50'
                     )}
                   >

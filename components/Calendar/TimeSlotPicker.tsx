@@ -12,6 +12,7 @@ interface TimeSlotPickerProps {
   onChange: (timeSlot: { start: string; end: string } | null) => void;
   className?: string;
   hideLabel?: boolean;
+  compact?: boolean;
 }
 
 const QUICK_DURATIONS = [
@@ -21,7 +22,7 @@ const QUICK_DURATIONS = [
   { label: '2h', minutes: 120 },
 ];
 
-export function TimeSlotPicker({ value, onChange, className, hideLabel = false }: TimeSlotPickerProps) {
+export function TimeSlotPicker({ value, onChange, className, hideLabel = false, compact = false }: TimeSlotPickerProps) {
   const [startTime, setStartTime] = useState(value?.start || '09:00');
   const [endTime, setEndTime] = useState(value?.end || '10:00');
 
@@ -53,6 +54,28 @@ export function TimeSlotPicker({ value, onChange, className, hideLabel = false }
     setEndTime('10:00');
     onChange(null);
   };
+
+  // Compact mode for mobile - just shows a button with time
+  if (compact) {
+    return (
+      <button
+        onClick={() => {
+          if (!value) {
+            // Set default time slot
+            onChange({ start: '09:00', end: '10:00' });
+          }
+        }}
+        className={cn(
+          "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-mono transition-all",
+          value ? "bg-primary/10 text-primary" : "bg-muted/50 text-muted-foreground",
+          className
+        )}
+      >
+        <Clock className="w-3.5 h-3.5" />
+        {value ? `${value.start} - ${value.end}` : 'Time'}
+      </button>
+    );
+  }
 
   return (
     <div className={cn('space-y-3', className)}>

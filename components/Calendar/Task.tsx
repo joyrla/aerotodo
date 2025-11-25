@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Task as TaskType, TaskColor } from '@/types';
 import { useCalendar } from '@/lib/contexts/CalendarContext';
 import { TaskDetailModal } from './TaskDetailModal';
@@ -34,8 +34,17 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
   const [optimisticCompleted, setOptimisticCompleted] = useState<boolean | null>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Swipe state for mobile
+  const [translateX, setTranslateX] = useState(0);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const startXRef = useRef(0);
+  const startYRef = useRef(0);
+  const currentXRef = useRef(0);
+  const isDraggingSwipe = useRef(false);
+  const directionLocked = useRef<'horizontal' | 'vertical' | null>(null);
 
-  const handleDelete = () => {
+  const handleDelete = useCallback(() => {
     // Store task data for undo
     const deletedTask = { ...task };
     const taskName = task.title?.trim() || 'Untitled task';
@@ -53,7 +62,7 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
         }
       }
     });
-  };
+  }, [task, deleteTask, addTask]);
   
   // Use optimistic state if available, otherwise use task.completed
   const displayCompleted = optimisticCompleted !== null ? optimisticCompleted : task.completed;
@@ -190,29 +199,116 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
     return `rgba(${r}, ${g}, ${b}, ${opacity})`;
   };
 
+  // Gmail-style swipe handlers
+  const onTouchStart = (e: React.TouchEvent) => {
+    if (isDragging || isDeleting) return;
+    const touch = e.touches[0];
+    startXRef.current = touch.clientX;
+    startYRef.current = touch.clientY;
+    currentXRef.current = touch.clientX;
+    isDraggingSwipe.current = false;
+    directionLocked.current = null;
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (isDragging || isDeleting) return;
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - startXRef.current;
+    const deltaY = touch.clientY - startYRef.current;
+    
+    // Lock direction after 10px movement
+    if (!directionLocked.current && (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10)) {
+      directionLocked.current = Math.abs(deltaX) > Math.abs(deltaY) ? 'horizontal' : 'vertical';
+    }
+    
+    // Only swipe left (negative deltaX)
+    if (directionLocked.current === 'horizontal' && deltaX < 0) {
+      isDraggingSwipe.current = true;
+      currentXRef.current = touch.clientX;
+      // Direct manipulation - no state update during drag for smoothness
+      const swipeAmount = Math.min(Math.abs(deltaX), 200);
+      setTranslateX(-swipeAmount);
+    }
+  };
+
+  const onTouchEnd = () => {
+    if (isDragging || isDeleting) return;
+    
+    const deltaX = currentXRef.current - startXRef.current;
+    const swipeDistance = Math.abs(deltaX);
+    
+    // If swiped more than 100px, delete
+    if (directionLocked.current === 'horizontal' && deltaX < -100) {
+      setIsDeleting(true);
+      setTranslateX(-500); // Slide off screen
+      setTimeout(() => {
+        handleDelete();
+      }, 120);
+    } else {
+      // Snap back
+      setTranslateX(0);
+    }
+    
+    isDraggingSwipe.current = false;
+    directionLocked.current = null;
+  };
+
+  const showSwipeAction = translateX < -20;
+
   return (
     <>
-      <div
-        {...dragHandleProps}
-        data-narrow-drag={isDragging && narrowOnDrag ? 'true' : undefined}
-        className={cn(
-           'group/task relative cursor-pointer min-h-[36px] select-none overflow-hidden',
-           'py-2 px-3 rounded-lg',
-           'bg-card/50 backdrop-blur-sm',
-           'transition-all duration-200 ease-out',
-           !isDragging && 'hover:bg-accent/40 hover:shadow-sm',
-           isDragging
-             ? 'shadow-xl ring-1 ring-border/50 bg-background z-50 scale-[1.02]'
-             : '',
-           displayCompleted && !isDragging && 'opacity-50',
-           isDragging && narrowOnDrag && 'task-narrow-drag'
-        )}
-         style={{
-           ...(isDragging && narrowOnDrag ? { width: '160px', maxWidth: '160px', minWidth: '160px' } : {}),
-         }}
-        onClick={handleEdit}
-        onDoubleClick={handleDoubleClick}
+      {/* Swipe Container */}
+      <div 
+        className="relative overflow-hidden rounded-lg"
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
       >
+        {/* Delete Action Background - revealed on swipe (Mobile only) */}
+        <div 
+          className={cn(
+            "absolute inset-0 flex items-center justify-end pr-5 md:hidden",
+            "bg-red-500/50",
+            "transition-opacity duration-200",
+            showSwipeAction ? "opacity-100" : "opacity-0"
+          )}
+        >
+          <Trash2 className={cn(
+            "w-5 h-5 text-white transition-transform duration-150",
+            translateX < -100 && "scale-110"
+          )} />
+        </div>
+
+        {/* Task Card */}
+        <div
+          {...dragHandleProps}
+          data-narrow-drag={isDragging && narrowOnDrag ? 'true' : undefined}
+          className={cn(
+             'group/task relative cursor-pointer min-h-[44px] md:min-h-[36px] select-none',
+             'py-2.5 md:py-2 px-3 rounded-lg',
+             'bg-card/50 backdrop-blur-sm',
+             'md:overflow-hidden',
+             'md:active:scale-100',
+             !showSwipeAction && 'active:scale-[0.98]',
+             !isDragging && !showSwipeAction && 'hover:bg-accent/40 hover:shadow-sm',
+             isDragging
+               ? 'shadow-xl ring-1 ring-border/50 bg-background z-50 scale-[1.02]'
+               : '',
+             displayCompleted && !isDragging && 'opacity-50',
+             isDragging && narrowOnDrag && 'task-narrow-drag'
+          )}
+           style={{
+             ...(isDragging && narrowOnDrag ? { width: '160px', maxWidth: '160px', minWidth: '160px' } : {}),
+             transform: `translateX(${translateX}px)`,
+             transition: isDraggingSwipe.current 
+               ? 'none' 
+               : isDeleting 
+                 ? 'transform 150ms ease-out' 
+                 : 'transform 250ms cubic-bezier(0.25, 0.1, 0.25, 1)',
+           }}
+          onClick={handleEdit}
+          onDoubleClick={handleDoubleClick}
+        >
          {/* Color Highlight - Full background filling the card */}
          {task.color !== 'default' && (
            <div
@@ -233,24 +329,24 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
           <button
             onClick={(e) => {
               e.stopPropagation();
-              setOptimisticCompleted(!displayCompleted); // Instant local feedback
+              setOptimisticCompleted(!displayCompleted);
               toggleTaskComplete(task.id);
             }}
             className={cn(
               'group/checkbox flex-shrink-0 flex items-center justify-center',
-              'p-2 -m-2',
+              'p-3 -m-3 md:p-2 md:-m-2',
               'transition-all duration-200 ease-out'
             )}
           >
             <div className={cn(
-              'w-4 h-4 rounded-full border flex items-center justify-center',
+              'w-5 h-5 md:w-4 md:h-4 rounded-full border flex items-center justify-center',
               'transition-all duration-200 ease-out',
               'group-hover/checkbox:scale-110 group-active/checkbox:scale-90',
                 displayCompleted
                 ? 'bg-primary border-primary text-primary-foreground'
                 : 'border-muted-foreground/40 group-hover/checkbox:border-primary/60 bg-transparent'
             )}>
-              {displayCompleted && <Check className="w-2.5 h-2.5" strokeWidth={3} />}
+              {displayCompleted && <Check className="w-3 h-3 md:w-2.5 md:h-2.5" strokeWidth={3} />}
             </div>
             </button>
 
@@ -308,19 +404,21 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
           {rightContent && (
             <div className={cn(
               "flex-shrink-0 transition-opacity duration-200",
-              // Hide when hovering if actions are shown, unless color picker is open (actions stay visible)
-              "group-hover/task:opacity-0",
-              showColorPicker && "opacity-0"
+              "md:group-hover/task:opacity-0",
+              showColorPicker && "md:opacity-0",
+              showSwipeAction && "opacity-0"
             )}>
               {rightContent}
         </div>
           )}
 
+        {/* Desktop only: Hover actions (hidden on mobile) */}
         {!(isDragging && narrowOnDrag) && (
         <div
           ref={colorPickerRef}
           className={cn(
-                 'absolute right-1 top-2 bottom-2 left-[50%] flex items-center justify-end pointer-events-none'
+                 'absolute right-1 top-2 bottom-2 left-[50%] flex items-center justify-end pointer-events-none',
+                 'hidden md:flex' // Hide on mobile
           )}
         >
           <div className={cn(
@@ -429,6 +527,7 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
           </div>
         </div>
         )}
+        </div>
         </div>
       </div>
 

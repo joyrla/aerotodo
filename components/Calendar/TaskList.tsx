@@ -258,8 +258,14 @@ export function TaskList({ date, tasks, droppableId, enableDragDrop = true, show
         className="h-full px-0 pb-4 relative space-y-1"
       >
         {/* Active Tasks */}
-        {activeTasks.map((task) => (
-          <div key={task.id} className={cn(justAdded && "pointer-events-none")}>
+        {activeTasks.map((task, index) => (
+          <div 
+            key={task.id} 
+            className={cn(justAdded && "pointer-events-none")}
+            style={{
+              animation: `slideInFromBottom 0.25s ease-out ${index * 0.03}s both`
+            }}
+          >
             <Task task={task} dragHandleProps={{}} />
           </div>
         ))}

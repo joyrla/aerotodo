@@ -300,6 +300,46 @@ body {
   }
 }
 
+/* Smooth spring animation for bottom sheet - subtle and satisfying */
+@keyframes sheetSlideUp {
+  0% {
+    transform: translateY(24px) scale(0.99);
+    opacity: 0;
+    filter: blur(6px);
+  }
+  60% {
+    filter: blur(0px);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+    filter: blur(0px);
+  }
+}
+
+@keyframes sheetSlideDown {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+    filter: blur(0px);
+  }
+  100% {
+    transform: translateY(24px) scale(0.985);
+    opacity: 0;
+    filter: blur(6px);
+  }
+}
+
+/* Prevent sheet from moving when keyboard appears on mobile */
+@supports (height: 100dvh) {
+  .sheet-fixed-bottom {
+    position: fixed;
+    bottom: 0;
+    height: 82dvh;
+    max-height: 82dvh;
+  }
+}
+
 @keyframes bounceSubtle {
   0%, 100% {
     transform: translateY(0);

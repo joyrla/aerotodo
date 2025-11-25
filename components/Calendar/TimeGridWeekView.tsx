@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { MouseEvent as ReactMouseEvent } from 'react';
+import type { MouseEvent as ReactMouseEvent, TouchEvent as ReactTouchEvent } from 'react';
 import { useCalendar } from '@/lib/contexts/CalendarContext';
 import { useSettings } from '@/lib/contexts/SettingsContext';
 import { dateHelpers } from '@/lib/utils/dateHelpers';
@@ -13,8 +13,10 @@ import { TaskDetailModal } from './TaskDetailModal';
 import { toast } from 'sonner';
 import { ProductivitySection } from './ProductivitySection';
 
-const HOURS = Array.from({ length: 24 }, (_, i) => i); // 0-23 hours
-const HOUR_HEIGHT = 64; // Increased height for better readability
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
+const HOUR_HEIGHT = 60;
+const MOBILE_HOUR_HEIGHT = 52;
+const LONG_PRESS_DELAY = 400; // ms to trigger long press
 
 interface DragSelection {
   dateStr: string;
@@ -28,26 +30,41 @@ export function TimeGridWeekView() {
   const { preferences } = useSettings();
   const [isMounted, setIsMounted] = useState(false);
   const [dragSelection, setDragSelection] = useState<DragSelection | null>(null);
-  const [isCreatingTask, setIsCreatingTask] = useState(false);
+  const [isLongPressing, setIsLongPressing] = useState(false);
   const [selectedTask, setSelectedTask] = useState<TaskType | null>(null);
   const [showTaskDetail, setShowTaskDetail] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [isMobile, setIsMobile] = useState(false);
   
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number; hour: number; dateStr: string } | null>(null);
   const weekDays = dateHelpers.getWeekDays(state.currentDate, preferences.weekStartsOn as 0 | 1);
   const allDays = weekDays;
+  
+  const hourHeight = isMobile ? MOBILE_HOUR_HEIGHT : HOUR_HEIGHT;
 
   useEffect(() => {
     setIsMounted(true);
+    
+    // Check if mobile
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
     // Scroll to 8 AM roughly on mount
     if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = 8 * HOUR_HEIGHT - 20;
+      const h = window.innerWidth < 768 ? MOBILE_HOUR_HEIGHT : HOUR_HEIGHT;
+      scrollContainerRef.current.scrollTop = 8 * h - 20;
     }
 
     // Update current time every minute
     const interval = setInterval(() => setCurrentTime(new Date()), 60000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('resize', checkMobile);
+    };
   }, []);
 
   // Handle scroll shadow effect
@@ -63,40 +80,100 @@ export function TimeGridWeekView() {
     return () => scrollContainer.removeEventListener('scroll', handleScroll);
   }, [isMounted]);
 
-  // Handle mouse events for creating tasks (optimized with useCallback)
-  const handleMouseDown = useCallback((dateStr: string, hour: number, e?: ReactMouseEvent) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
+  // Single tap handler - creates 1-hour task and opens detail immediately
+  const handleSingleTap = useCallback((dateStr: string, hour: number) => {
+    // Create new 1-hour task
+    const newTaskData = {
+      title: '',
+      color: 'default' as const,
+      completed: false,
+      date: dateStr,
+      timeSlot: {
+        start: `${hour.toString().padStart(2, '0')}:00`,
+        end: `${(hour + 1).toString().padStart(2, '0')}:00`
+      }
+    };
+    
+    const createdTask = addTask(newTaskData);
+    // Immediately open detail modal
+    setSelectedTask(createdTask);
+    setShowTaskDetail(true);
+  }, [addTask]);
+
+  // Long press start - initiates drag selection
+  const handleLongPressStart = useCallback((dateStr: string, hour: number, clientY: number) => {
+    setIsLongPressing(true);
     setDragSelection({
       dateStr,
       startHour: hour,
       endHour: hour,
       isActive: true
     });
-    setIsCreatingTask(true);
+    // Haptic feedback on mobile if available
+    if (navigator.vibrate) {
+      navigator.vibrate(50);
+    }
   }, []);
 
-  const handleMouseUp = useCallback(() => {
-    // Store selection data before clearing it
-    const currentSelection = dragSelection;
+  // Touch/Mouse handlers
+  const handleTouchStart = useCallback((dateStr: string, hour: number, e: ReactTouchEvent) => {
+    const touch = e.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY, hour, dateStr };
     
-    // Clear selection first
-    setDragSelection(null);
-    setIsCreatingTask(false);
+    // Start long press timer
+    longPressTimerRef.current = setTimeout(() => {
+      handleLongPressStart(dateStr, hour, touch.clientY);
+    }, LONG_PRESS_DELAY);
+  }, [handleLongPressStart]);
+
+  const handleTouchMove = useCallback((e: ReactTouchEvent) => {
+    const touch = e.touches[0];
     
-    // Then create task outside of state setter
-    if (currentSelection && isCreatingTask) {
-      const startHour = Math.min(currentSelection.startHour, currentSelection.endHour);
-      const endHour = Math.max(currentSelection.startHour, currentSelection.endHour) + 1;
+    // If not long pressing yet, check if moved too much (cancel long press)
+    if (!isLongPressing && touchStartRef.current) {
+      const dx = Math.abs(touch.clientX - touchStartRef.current.x);
+      const dy = Math.abs(touch.clientY - touchStartRef.current.y);
+      if (dx > 10 || dy > 10) {
+        if (longPressTimerRef.current) {
+          clearTimeout(longPressTimerRef.current);
+          longPressTimerRef.current = null;
+        }
+        return;
+      }
+    }
+    
+    // If long pressing, update selection based on Y position
+    if (isLongPressing && dragSelection && scrollContainerRef.current) {
+      e.preventDefault(); // Prevent scroll while dragging
       
-      // Create new task with placeholder title
+      const containerRect = scrollContainerRef.current.getBoundingClientRect();
+      const scrollTop = scrollContainerRef.current.scrollTop;
+      const relativeY = touch.clientY - containerRect.top + scrollTop;
+      const newHour = Math.max(0, Math.min(23, Math.floor(relativeY / hourHeight)));
+      
+      if (newHour !== dragSelection.endHour) {
+        setDragSelection(prev => prev ? { ...prev, endHour: newHour } : null);
+      }
+    }
+  }, [isLongPressing, dragSelection, hourHeight]);
+
+  const handleTouchEnd = useCallback(() => {
+    // Clear long press timer
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    
+    // If was long pressing, create task with selection
+    if (isLongPressing && dragSelection) {
+      const startHour = Math.min(dragSelection.startHour, dragSelection.endHour);
+      const endHour = Math.max(dragSelection.startHour, dragSelection.endHour) + 1;
+      
       const newTaskData = {
         title: '',
         color: 'default' as const,
         completed: false,
-        date: currentSelection.dateStr,
+        date: dragSelection.dateStr,
         timeSlot: {
           start: `${startHour.toString().padStart(2, '0')}:00`,
           end: `${endHour.toString().padStart(2, '0')}:00`
@@ -106,15 +183,88 @@ export function TimeGridWeekView() {
       const createdTask = addTask(newTaskData);
       setSelectedTask(createdTask);
       setShowTaskDetail(true);
+      
+      setDragSelection(null);
+      setIsLongPressing(false);
+    } else if (touchStartRef.current && !isLongPressing) {
+      // Single tap
+      handleSingleTap(touchStartRef.current.dateStr, touchStartRef.current.hour);
     }
-  }, [isCreatingTask, dragSelection, addTask]);
+    
+    touchStartRef.current = null;
+  }, [isLongPressing, dragSelection, addTask, handleSingleTap]);
 
-  useEffect(() => {
-    if (isCreatingTask) {
-      document.addEventListener('mouseup', handleMouseUp);
-      return () => document.removeEventListener('mouseup', handleMouseUp);
+  // Desktop mouse handlers
+  const handleMouseDown = useCallback((dateStr: string, hour: number, e: ReactMouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    touchStartRef.current = { x: e.clientX, y: e.clientY, hour, dateStr };
+    
+    // Start long press timer for desktop too
+    longPressTimerRef.current = setTimeout(() => {
+      handleLongPressStart(dateStr, hour, e.clientY);
+    }, LONG_PRESS_DELAY);
+  }, [handleLongPressStart]);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!isLongPressing || !dragSelection || !scrollContainerRef.current) return;
+    
+    const containerRect = scrollContainerRef.current.getBoundingClientRect();
+    const scrollTop = scrollContainerRef.current.scrollTop;
+    const relativeY = e.clientY - containerRect.top + scrollTop;
+    const newHour = Math.max(0, Math.min(23, Math.floor(relativeY / hourHeight)));
+    
+    if (newHour !== dragSelection.endHour) {
+      setDragSelection(prev => prev ? { ...prev, endHour: newHour } : null);
     }
-  }, [isCreatingTask, dragSelection, handleMouseUp]);
+  }, [isLongPressing, dragSelection, hourHeight]);
+
+  const handleMouseUp = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    
+    if (isLongPressing && dragSelection) {
+      const startHour = Math.min(dragSelection.startHour, dragSelection.endHour);
+      const endHour = Math.max(dragSelection.startHour, dragSelection.endHour) + 1;
+      
+      const newTaskData = {
+        title: '',
+        color: 'default' as const,
+        completed: false,
+        date: dragSelection.dateStr,
+        timeSlot: {
+          start: `${startHour.toString().padStart(2, '0')}:00`,
+          end: `${endHour.toString().padStart(2, '0')}:00`
+        }
+      };
+      
+      const createdTask = addTask(newTaskData);
+      setSelectedTask(createdTask);
+      setShowTaskDetail(true);
+      
+      setDragSelection(null);
+      setIsLongPressing(false);
+    } else if (touchStartRef.current && !isLongPressing) {
+      handleSingleTap(touchStartRef.current.dateStr, touchStartRef.current.hour);
+    }
+    
+    touchStartRef.current = null;
+  }, [isLongPressing, dragSelection, addTask, handleSingleTap]);
+
+  // Global mouse event listeners for drag
+  useEffect(() => {
+    if (isLongPressing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isLongPressing, handleMouseMove, handleMouseUp]);
 
   const handleDragEnd = (result: DropResult) => {
     const { destination, draggableId } = result;
@@ -177,40 +327,13 @@ export function TimeGridWeekView() {
     });
   }, [tasks]);
 
-  const handleMouseEnter = useCallback((dateStr: string, hour: number) => {
-    setDragSelection(prev => {
-      if (!prev || prev.dateStr !== dateStr) return prev;
-      
-      const direction = hour > prev.startHour ? 1 : -1;
-      const start = Math.min(prev.startHour, hour);
-      const end = Math.max(prev.startHour, hour);
-      
-      for (let h = start; h <= end; h++) {
-        if (tasks.some(task => {
-          if (task.date !== dateStr || !task.timeSlot) return false;
-          const startHour = parseInt(task.timeSlot.start.split(':')[0]);
-          const endHour = parseInt(task.timeSlot.end.split(':')[0]);
-          return h >= startHour && h < endHour;
-        })) {
-          if (direction > 0) {
-            return { ...prev, endHour: h - 1 };
-          } else {
-            return { ...prev, endHour: h + 1 };
-          }
-        }
-      }
-      
-      return { ...prev, endHour: hour };
-    });
-  }, [tasks]);
-
   const getTaskHeight = useCallback((task: TaskType) => {
-    if (!task.timeSlot) return HOUR_HEIGHT - 8;
+    if (!task.timeSlot) return hourHeight - 8;
     const startHour = parseInt(task.timeSlot.start.split(':')[0]);
     const endHour = parseInt(task.timeSlot.end.split(':')[0]);
     const duration = endHour - startHour;
-    return (duration * HOUR_HEIGHT) - 8;
-  }, []);
+    return (duration * hourHeight) - 8;
+  }, [hourHeight]);
 
   const getColorValue = useCallback((color: string): string => {
     const colorMap: Record<string, string> = {
@@ -238,7 +361,7 @@ export function TimeGridWeekView() {
 
   const currentHour = currentTime.getHours();
   const currentMinute = currentTime.getMinutes();
-  const currentTimeTop = currentHour * HOUR_HEIGHT + (currentMinute / 60) * HOUR_HEIGHT;
+  const currentTimeTop = currentHour * hourHeight + (currentMinute / 60) * hourHeight;
 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
@@ -248,7 +371,7 @@ export function TimeGridWeekView() {
           "flex border-b border-border/40 sticky top-0 bg-background/95 backdrop-blur-xl z-30 transition-all duration-200",
           isScrolled && "shadow-sm border-border/60"
         )}>
-          <div className="w-16 flex-shrink-0 border-r border-border/30 bg-muted/5" />
+          <div className="w-10 md:w-14 flex-shrink-0 border-r border-border/30 bg-muted/5" />
           
           {allDays.map((day) => {
             const isToday = dateHelpers.isToday(day);
@@ -258,22 +381,23 @@ export function TimeGridWeekView() {
               <div
                 key={dateStr}
                 className={cn(
-                  'flex-1 py-3 px-2 border-r border-border/30 min-w-[120px]',
+                  'flex-1 py-2 md:py-3 px-1 md:px-2 border-r border-border/30 min-w-[44px] md:min-w-[100px]',
                   isToday ? 'bg-primary/5' : 'bg-transparent'
                 )}
               >
-                <div className="flex flex-col items-center gap-1">
+                <div className="flex flex-col items-center gap-0.5 md:gap-1">
                   <span className={cn(
-                    'text-[10px] font-mono font-bold uppercase tracking-widest',
+                    'text-[9px] md:text-[10px] font-mono font-bold uppercase tracking-wider',
                     isToday ? 'text-primary' : 'text-muted-foreground/70'
                   )}>
-                    {format(day, 'EEE')}
+                    {isMobile ? format(day, 'EEEEE') : format(day, 'EEE')}
                   </span>
                   <div className={cn(
-                    'w-8 h-8 flex items-center justify-center rounded-full text-lg font-mono font-medium transition-all duration-300',
+                    'flex items-center justify-center rounded-full font-mono font-medium transition-all duration-300',
+                    'w-6 h-6 text-sm md:w-8 md:h-8 md:text-lg',
                     isToday 
-                      ? 'bg-primary text-primary-foreground shadow-md scale-110' 
-                      : 'text-foreground hover:bg-accent'
+                      ? 'bg-primary text-primary-foreground shadow-md' 
+                      : 'text-foreground'
                   )}>
                     {format(day, 'd')}
                   </div>
@@ -286,23 +410,23 @@ export function TimeGridWeekView() {
         {/* Scrollable Container */}
         <div 
           ref={scrollContainerRef} 
-          className="flex-1 overflow-y-auto overflow-x-auto scrollbar-hide relative"
+          className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide relative"
         >
-          <div className="flex flex-col min-w-max lg:min-w-full">
+          <div className="flex flex-col">
             {/* Time Grid Section */}
             <div className="flex relative">
               {/* Time Labels */}
-              <div className="sticky left-0 z-20 w-16 flex-shrink-0 bg-background border-r border-border/30 flex flex-col">
+              <div className="sticky left-0 z-20 w-10 md:w-14 flex-shrink-0 bg-background border-r border-border/30 flex flex-col">
                 {HOURS.map((hour) => (
                   <div
                     key={hour}
                     className="relative flex-shrink-0 border-b border-transparent"
-                    style={{ height: `${HOUR_HEIGHT}px` }}
+                    style={{ height: `${hourHeight}px` }}
                   >
-                    <span className="absolute -top-2.5 right-3 text-[10px] font-mono text-muted-foreground/60 bg-background px-1">
-                      {hour === 0 ? '12 AM' : hour < 12 ? `${hour} AM` : hour === 12 ? '12 PM' : `${hour - 12} PM`}
+                    <span className="absolute -top-2 right-1 md:right-2 text-[9px] md:text-[10px] font-mono text-muted-foreground/60 bg-background px-0.5">
+                      {hour === 0 ? '12a' : hour < 12 ? `${hour}a` : hour === 12 ? '12p' : `${hour - 12}p`}
                     </span>
-                    <div className="absolute right-0 top-0 w-2 h-[1px] bg-border/30" />
+                    <div className="absolute right-0 top-0 w-1.5 h-[1px] bg-border/30" />
                   </div>
                 ))}
               </div>
@@ -316,7 +440,7 @@ export function TimeGridWeekView() {
                      style={{ top: `${currentTimeTop}px` }}
                    >
                      <div className="w-full h-[2px] bg-red-500 shadow-[0_0_4px_rgba(239,68,68,0.4)]" />
-                     <div className="absolute -left-[6px] w-3 h-3 rounded-full bg-red-500 shadow-sm ring-2 ring-background" />
+                     <div className="absolute -left-1 w-2 h-2 rounded-full bg-red-500 shadow-sm ring-2 ring-background" />
                    </div>
                 )}
 
@@ -331,31 +455,31 @@ export function TimeGridWeekView() {
                     ? Math.max(dragSelection.startHour, dragSelection.endHour) + 1
                     : null;
                   const selectionHeight = selectionStartHour !== null && selectionEndHour !== null
-                      ? (selectionEndHour - selectionStartHour) * HOUR_HEIGHT - 4
+                      ? (selectionEndHour - selectionStartHour) * hourHeight - 4
                       : 0;
 
                   return (
                     <div 
                       key={dateStr} 
                       className={cn(
-                        'flex-1 border-r border-border/30 relative min-w-[120px]',
+                        'flex-1 border-r border-border/30 relative min-w-0',
                         isToday ? 'bg-primary/[0.02]' : 'bg-transparent'
                       )}
                     >
                       {/* Selection Indicator */}
                       {isSelectionForDay && dragSelection && selectionStartHour !== null && (
                         <div
-                          className="absolute inset-x-1 rounded-md pointer-events-none z-20 border border-primary/50 overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+                          className="absolute inset-x-0.5 md:inset-x-1 rounded-md pointer-events-none z-20 border border-primary/50 overflow-hidden animate-in fade-in zoom-in-95 duration-200"
                           style={{
-                            top: selectionStartHour * HOUR_HEIGHT + 2,
-                            height: `${Math.max(selectionHeight, HOUR_HEIGHT - 4)}px`,
+                            top: selectionStartHour * hourHeight + 2,
+                            height: `${Math.max(selectionHeight, hourHeight - 4)}px`,
                             backgroundColor: 'hsla(var(--primary) / 0.1)',
                             backdropFilter: 'blur(2px)',
                           }}
                         >
                           <div className="h-full w-1 bg-primary absolute left-0 top-0" />
-                          <div className="px-3 py-1.5 text-xs font-medium text-primary">New Task</div>
-                          <div className="px-3 text-[10px] font-mono text-primary/70">
+                          <div className="px-1.5 md:px-3 py-1 text-[10px] md:text-xs font-medium text-primary truncate">New</div>
+                          <div className="px-1.5 md:px-3 text-[9px] md:text-[10px] font-mono text-primary/70 hidden md:block">
                             {`${selectionStartHour}:00 - ${selectionEndHour}:00`}
                           </div>
                         </div>
@@ -366,7 +490,6 @@ export function TimeGridWeekView() {
                         const tasksInSlot = getTasksForTimeSlot(dateStr, hour);
                         const slotOccupied = isSlotOccupied(dateStr, hour);
                         const droppableId = `timegrid-${dateStr}-${hour}`;
-                        const isSelectionStart = dragSelection && dragSelection.dateStr === dateStr && hour === Math.min(dragSelection.startHour, dragSelection.endHour);
                         const isInSelection = dragSelection && dragSelection.dateStr === dateStr && hour >= Math.min(dragSelection.startHour, dragSelection.endHour) && hour <= Math.max(dragSelection.startHour, dragSelection.endHour);
 
                         return (
@@ -383,17 +506,19 @@ export function TimeGridWeekView() {
                                   !isInSelection && !slotOccupied && 'hover:bg-primary/5',
                                   snapshot.isDraggingOver && 'bg-accent/30',
                                 )}
-                                style={{ height: `${HOUR_HEIGHT}px` }}
+                                style={{ height: `${hourHeight}px` }}
                                 onMouseDown={(e) => {
                                   if (slotOccupied) return;
                                   if (e.target === e.currentTarget || (e.target as HTMLElement).closest('[data-droppable-placeholder]')) {
                                     handleMouseDown(dateStr, hour, e);
                                   }
                                 }}
-                                onMouseEnter={() => {
-                                  if (slotOccupied && isCreatingTask) return;
-                                  handleMouseEnter(dateStr, hour);
+                                onTouchStart={(e) => {
+                                  if (slotOccupied) return;
+                                  handleTouchStart(dateStr, hour, e);
                                 }}
+                                onTouchMove={handleTouchMove}
+                                onTouchEnd={handleTouchEnd}
                               >
                                 {tasksInSlot.map((task, index) => (
                                   <Draggable key={task.id} draggableId={task.id} index={index}>
@@ -407,10 +532,11 @@ export function TimeGridWeekView() {
                                           setShowTaskDetail(true);
                                         }}
                                         className={cn(
-                                          'absolute inset-x-1 top-0.5 rounded-md px-2.5 py-2 text-xs',
+                                          'absolute inset-x-0.5 md:inset-x-1 top-0.5 rounded px-1 md:px-2 py-1 md:py-1.5 text-[10px] md:text-xs',
                                           'shadow-sm transition-all duration-200',
                                           'hover:shadow-md hover:brightness-95 hover:z-10',
-                                          snapshot.isDragging && 'shadow-xl scale-105 z-50 opacity-90 rotate-1',
+                                          'active:scale-[0.98]',
+                                          snapshot.isDragging && 'shadow-xl scale-105 z-50 opacity-90',
                                           task.completed && 'opacity-60 grayscale'
                                         )}
                                         style={{
@@ -427,14 +553,14 @@ export function TimeGridWeekView() {
                                           {...provided.dragHandleProps}
                                           className="h-full flex flex-col gap-0.5 overflow-hidden"
                                         >
-                                          <div className="font-medium truncate leading-tight flex items-center gap-1.5">
-                                             {task.completed && <span className="opacity-70">✓</span>}
-                                             <span className={cn(task.completed && "line-through decoration-current/50")}>
+                                          <div className="font-medium truncate leading-tight flex items-center gap-1">
+                                             {task.completed && <span className="opacity-70 text-[8px]">✓</span>}
+                                             <span className={cn("truncate", task.completed && "line-through decoration-current/50")}>
                                                {task.title?.trim() || 'Untitled'}
                                              </span>
                                           </div>
-                                          {getTaskHeight(task) > 30 && (
-                                            <div className="text-[10px] opacity-80 font-mono mt-auto">
+                                          {getTaskHeight(task) > 35 && (
+                                            <div className="text-[8px] md:text-[10px] opacity-80 font-mono mt-auto hidden md:block">
                                               {task.timeSlot?.start} - {task.timeSlot?.end}
                                             </div>
                                           )}
@@ -456,9 +582,9 @@ export function TimeGridWeekView() {
             </div>
             
             {/* Productivity Section at bottom of scroll */}
-            <div className="px-4 pb-16 pt-8 bg-background/50 border-t border-border/20">
-              <div className="mb-4 text-xs font-mono text-muted-foreground uppercase tracking-widest pl-16">
-                Productivity Modules
+            <div className="px-2 md:px-4 pb-16 pt-6 md:pt-8 bg-background/50 border-t border-border/20">
+              <div className="mb-3 md:mb-4 text-[10px] md:text-xs font-mono text-muted-foreground uppercase tracking-widest pl-10 md:pl-14">
+                Modules
               </div>
               <ProductivitySection enableDragDrop={false} />
             </div>
