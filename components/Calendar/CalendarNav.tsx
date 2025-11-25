@@ -351,6 +351,8 @@ export function CalendarNav({ onShowKeyboardHelp, weekViewMode = 'list', onWeekV
   );
 }
 
+import { createPortal } from 'react-dom';
+
 // Mobile Navigation with Sidebar
 function MobileNav({
   state,
@@ -384,6 +386,11 @@ function MobileNav({
   signOut: () => void;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
 
@@ -473,150 +480,155 @@ function MobileNav({
         </div>
       </div>
 
-      {/* Sidebar Overlay - Strong blur for readability */}
-      <div 
-        className={cn(
-          "fixed inset-0 z-[100] bg-black/60 backdrop-blur-xl transition-all duration-200 md:hidden",
-          sidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
-        )}
-        onClick={closeSidebar}
-      />
-
-      {/* Sidebar - Compact with solid background */}
-      <div 
-        className={cn(
-          "fixed top-0 left-0 z-[101] h-full w-[240px] bg-background border-r border-border/50 shadow-2xl md:hidden",
-          "transition-transform duration-200 ease-out",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        )}
-      >
-        {/* Sidebar Header - Compact */}
-        <div className="flex items-center justify-between px-3 py-3 border-b border-border/40">
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-foreground rounded-lg flex items-center justify-center">
-              <span className="text-background font-bold text-xs">A</span>
-            </div>
-            <span className="font-mono font-semibold text-xs">AeroTodo</span>
-          </div>
-          <button 
+      {mounted && createPortal(
+        <>
+          {/* Sidebar Overlay - Strong blur for readability */}
+          <div 
+            className={cn(
+              "fixed inset-0 z-[100] bg-black/60 backdrop-blur-xl transition-all duration-200 md:hidden",
+              sidebarOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+            )}
             onClick={closeSidebar}
-            className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-muted/50 transition-colors active:scale-95"
+          />
+
+          {/* Sidebar - Compact with solid background */}
+          <div 
+            className={cn(
+              "fixed top-0 left-0 z-[101] h-full w-[240px] bg-background border-r border-border/50 shadow-2xl md:hidden flex flex-col",
+              "transition-transform duration-200 ease-out",
+              sidebarOpen ? "translate-x-0" : "-translate-x-full"
+            )}
           >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto pb-20">
-          {/* View Options */}
-          <div className="p-2.5">
-            <p className="px-2.5 py-1.5 text-[9px] font-mono uppercase tracking-wider text-muted-foreground/60">Views</p>
-            
-            {/* Day */}
-            <button
-              onClick={() => handleViewChange('day')}
-              className={cn(
-                "w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg transition-all active:scale-[0.98]",
-                state.viewMode === 'day' 
-                  ? "bg-primary/10 text-primary" 
-                  : "hover:bg-muted/50 text-foreground"
-              )}
-            >
-              <Sun className="w-4.5 h-4.5" />
-              <span className="font-mono text-xs font-medium">Day</span>
-              {state.viewMode === 'day' && <Check className="w-3.5 h-3.5 ml-auto" />}
-            </button>
-
-            {/* Week - List */}
-            <button
-              onClick={() => handleViewChange('week', 'list')}
-              className={cn(
-                "w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg transition-all active:scale-[0.98]",
-                state.viewMode === 'week' && weekViewMode === 'list'
-                  ? "bg-primary/10 text-primary" 
-                  : "hover:bg-muted/50 text-foreground"
-              )}
-            >
-              <List className="w-4.5 h-4.5" />
-              <span className="font-mono text-xs font-medium">Week List</span>
-              {state.viewMode === 'week' && weekViewMode === 'list' && <Check className="w-3.5 h-3.5 ml-auto" />}
-            </button>
-
-            {/* Week - Schedule */}
-            <button
-              onClick={() => handleViewChange('week', 'schedule')}
-              className={cn(
-                "w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg transition-all active:scale-[0.98]",
-                state.viewMode === 'week' && weekViewMode === 'schedule'
-                  ? "bg-primary/10 text-primary" 
-                  : "hover:bg-muted/50 text-foreground"
-              )}
-            >
-              <Clock className="w-4.5 h-4.5" />
-              <span className="font-mono text-xs font-medium">Week Schedule</span>
-              {state.viewMode === 'week' && weekViewMode === 'schedule' && <Check className="w-3.5 h-3.5 ml-auto" />}
-            </button>
-
-            {/* Month */}
-            <button
-              onClick={() => handleViewChange('month')}
-              className={cn(
-                "w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg transition-all active:scale-[0.98]",
-                state.viewMode === 'month'
-                  ? "bg-primary/10 text-primary" 
-                  : "hover:bg-muted/50 text-foreground"
-              )}
-            >
-              <LayoutGrid className="w-4.5 h-4.5" />
-              <span className="font-mono text-xs font-medium">Month</span>
-              {state.viewMode === 'month' && <Check className="w-3.5 h-3.5 ml-auto" />}
-            </button>
-          </div>
-
-          {/* Divider */}
-          <div className="mx-3 border-t border-border/40" />
-
-          {/* Quick Actions */}
-          <div className="p-2.5">
-            <p className="px-2.5 py-1.5 text-[9px] font-mono uppercase tracking-wider text-muted-foreground/60">Quick Actions</p>
-            
-            <button
-              onClick={() => { goToToday(); closeSidebar(); }}
-              className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg hover:bg-muted/50 transition-all active:scale-[0.98] text-foreground"
-            >
-              <CalendarIcon className="w-4.5 h-4.5" />
-              <span className="font-mono text-xs font-medium">Go to Today</span>
-            </button>
-
-            <Link href="/settings" onClick={closeSidebar}>
-              <div className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg hover:bg-muted/50 transition-all active:scale-[0.98] text-foreground">
-                <Settings className="w-4.5 h-4.5" />
-                <span className="font-mono text-xs font-medium">Settings</span>
+            {/* Sidebar Header - Compact */}
+            <div className="flex items-center justify-between px-3 py-3 border-b border-border/40 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 bg-foreground rounded-lg flex items-center justify-center">
+                  <span className="text-background font-bold text-xs">A</span>
+                </div>
+                <span className="font-mono font-semibold text-xs">AeroTodo</span>
               </div>
-            </Link>
-          </div>
-        </div>
+              <button 
+                onClick={closeSidebar}
+                className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-muted/50 transition-colors active:scale-95"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
 
-        {/* Bottom Section - Sign In/Out */}
-        <div className="absolute bottom-0 left-0 right-0 p-2.5 border-t border-border/40 bg-background">
-          {user ? (
-            <button
-              onClick={() => { signOut(); closeSidebar(); }}
-              className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg hover:bg-destructive/10 transition-all active:scale-[0.98] text-destructive"
-            >
-              <LogOut className="w-4.5 h-4.5" />
-              <span className="font-mono text-xs font-medium">Sign Out</span>
-            </button>
-          ) : (
-            <Link href="/login" onClick={closeSidebar}>
-              <div className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg hover:bg-primary/10 transition-all active:scale-[0.98] text-primary">
-                <LogOut className="w-4.5 h-4.5 rotate-180" />
-                <span className="font-mono text-xs font-medium">Sign In</span>
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto">
+              {/* View Options */}
+              <div className="p-2.5">
+                <p className="px-2.5 py-1.5 text-[9px] font-mono uppercase tracking-wider text-muted-foreground/60">Views</p>
+                
+                {/* Day */}
+                <button
+                  onClick={() => handleViewChange('day')}
+                  className={cn(
+                    "w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg transition-all active:scale-[0.98]",
+                    state.viewMode === 'day' 
+                      ? "bg-primary/10 text-primary" 
+                      : "hover:bg-muted/50 text-foreground"
+                  )}
+                >
+                  <Sun className="w-4.5 h-4.5" />
+                  <span className="font-mono text-xs font-medium">Day</span>
+                  {state.viewMode === 'day' && <Check className="w-3.5 h-3.5 ml-auto" />}
+                </button>
+
+                {/* Week - List */}
+                <button
+                  onClick={() => handleViewChange('week', 'list')}
+                  className={cn(
+                    "w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg transition-all active:scale-[0.98]",
+                    state.viewMode === 'week' && weekViewMode === 'list'
+                      ? "bg-primary/10 text-primary" 
+                      : "hover:bg-muted/50 text-foreground"
+                  )}
+                >
+                  <List className="w-4.5 h-4.5" />
+                  <span className="font-mono text-xs font-medium">Week List</span>
+                  {state.viewMode === 'week' && weekViewMode === 'list' && <Check className="w-3.5 h-3.5 ml-auto" />}
+                </button>
+
+                {/* Week - Schedule */}
+                <button
+                  onClick={() => handleViewChange('week', 'schedule')}
+                  className={cn(
+                    "w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg transition-all active:scale-[0.98]",
+                    state.viewMode === 'week' && weekViewMode === 'schedule'
+                      ? "bg-primary/10 text-primary" 
+                      : "hover:bg-muted/50 text-foreground"
+                  )}
+                >
+                  <Clock className="w-4.5 h-4.5" />
+                  <span className="font-mono text-xs font-medium">Week Schedule</span>
+                  {state.viewMode === 'week' && weekViewMode === 'schedule' && <Check className="w-3.5 h-3.5 ml-auto" />}
+                </button>
+
+                {/* Month */}
+                <button
+                  onClick={() => handleViewChange('month')}
+                  className={cn(
+                    "w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg transition-all active:scale-[0.98]",
+                    state.viewMode === 'month'
+                      ? "bg-primary/10 text-primary" 
+                      : "hover:bg-muted/50 text-foreground"
+                  )}
+                >
+                  <LayoutGrid className="w-4.5 h-4.5" />
+                  <span className="font-mono text-xs font-medium">Month</span>
+                  {state.viewMode === 'month' && <Check className="w-3.5 h-3.5 ml-auto" />}
+                </button>
               </div>
-            </Link>
-          )}
-        </div>
-      </div>
+
+              {/* Divider */}
+              <div className="mx-3 border-t border-border/40" />
+
+              {/* Quick Actions */}
+              <div className="p-2.5">
+                <p className="px-2.5 py-1.5 text-[9px] font-mono uppercase tracking-wider text-muted-foreground/60">Quick Actions</p>
+                
+                <button
+                  onClick={() => { goToToday(); closeSidebar(); }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg hover:bg-muted/50 transition-all active:scale-[0.98] text-foreground"
+                >
+                  <CalendarIcon className="w-4.5 h-4.5" />
+                  <span className="font-mono text-xs font-medium">Go to Today</span>
+                </button>
+
+                <Link href="/settings" onClick={closeSidebar}>
+                  <div className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg hover:bg-muted/50 transition-all active:scale-[0.98] text-foreground">
+                    <Settings className="w-4.5 h-4.5" />
+                    <span className="font-mono text-xs font-medium">Settings</span>
+                  </div>
+                </Link>
+              </div>
+            </div>
+
+            {/* Bottom Section - Sign In/Out */}
+            <div className="p-2.5 border-t border-border/40 bg-background shrink-0">
+              {user ? (
+                <button
+                  onClick={() => { signOut(); closeSidebar(); }}
+                  className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg hover:bg-destructive/10 transition-all active:scale-[0.98] text-destructive"
+                >
+                  <LogOut className="w-4.5 h-4.5" />
+                  <span className="font-mono text-xs font-medium">Sign Out</span>
+                </button>
+              ) : (
+                <Link href="/login" onClick={closeSidebar}>
+                  <div className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg hover:bg-primary/10 transition-all active:scale-[0.98] text-primary">
+                    <LogOut className="w-4.5 h-4.5 rotate-180" />
+                    <span className="font-mono text-xs font-medium">Sign In</span>
+                  </div>
+                </Link>
+              )}
+            </div>
+          </div>
+        </>,
+        document.body
+      )}
     </>
   );
 }
