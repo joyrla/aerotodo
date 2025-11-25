@@ -9,6 +9,26 @@ import { cn } from '@/lib/utils';
 import { AlertCircle } from 'lucide-react';
 
 export function OverdueModule({ tasks, enableDragDrop, config }: ModuleComponentProps & { config: ModuleConfig }) {
+  const emptyState = (
+    <div className="py-6 px-1">
+      <p className="text-xs font-mono text-muted-foreground/50">No overdue tasks</p>
+    </div>
+  );
+
+  if (tasks.length === 0) {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="text-sm font-semibold font-mono text-red-600 dark:text-red-400 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4" />
+            {config.customName || 'Overdue'}
+          </div>
+        </div>
+        {emptyState}
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
