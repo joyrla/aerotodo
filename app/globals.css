@@ -173,6 +173,8 @@ html {
   scroll-behavior: smooth;
   /* Optimize for high refresh rate displays */
   -webkit-overflow-scrolling: touch;
+  /* Background color for safe area coverage */
+  background-color: hsl(var(--background));
 }
 
 body {
@@ -187,6 +189,8 @@ body {
   /* Ensure full viewport coverage */
   min-height: 100vh;
   min-height: 100dvh;
+  /* Background color for safe areas */
+  background-color: hsl(var(--background));
 }
 
 /* Native-like scrolling for all scrollable elements */
