@@ -12,7 +12,7 @@ interface ProductivitySectionProps {
 }
 
 export function ProductivitySection({ enableDragDrop = true }: ProductivitySectionProps) {
-  const { filteredTasks: tasks, moveTask } = useCalendar();
+  const { tasks, moveTask } = useCalendar();
   const { moduleConfigs } = useSettings();
   const [isMounted, setIsMounted] = useState(false);
 

@@ -15,13 +15,11 @@ export function GuestWarningBanner({ onSignUpClick }: GuestWarningBannerProps) {
   const [dismissed, setDismissed] = useState(false);
   const [mounted, setMounted] = useState(false);
 
-  // Wait for mount to avoid hydration issues
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Don't show while loading auth state, if user is logged in, or if banner is dismissed
-  // Also don't show until mounted to prevent flash during page reload
+  // Don't show if user is logged in, banner dismissed, or auth still loading
   if (!mounted || loading || user || dismissed) {
     return null;
   }

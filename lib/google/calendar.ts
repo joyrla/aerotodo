@@ -449,6 +449,13 @@ export async function fullSync(
         tasks.map(t => t.googleCalendarEventId).filter(Boolean)
       );
       
+      // Map existing events to tasks for quick lookup to update profiles
+      const tasksByEventId = new Map(
+        tasks
+          .filter(t => t.googleCalendarEventId)
+          .map(t => [t.googleCalendarEventId!, t])
+      );
+      
       // Also create a set of existing tasks by title+date to catch duplicates
       // that might have been created without the googleCalendarEventId
       const existingTaskKeys = new Set(
@@ -459,7 +466,15 @@ export async function fullSync(
         if (event.status === 'cancelled') continue;
         
         // Skip if we already have this event by ID
-        if (existingEventIds.has(event.id)) continue;
+        if (existingEventIds.has(event.id)) {
+          // Check if we need to update the profile assignment
+          const existingTask = tasksByEventId.get(event.id);
+          if (existingTask && settings.profileId && existingTask.projectId !== settings.profileId) {
+            onTaskUpdate(existingTask.id, { projectId: settings.profileId });
+            result.updated++;
+          }
+          continue;
+        }
 
         // Parse the event to check for duplicate by content
         const taskData = googleEventToTask(event, settings.profileId);
