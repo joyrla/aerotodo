@@ -143,6 +143,7 @@ export interface CalendarContextType {
   goToNextDay: () => void;
   timePresets: TimePreset[];
   updateTimePresets: (presets: TimePreset[]) => void;
+  ensureProjectExists: (profileId: string) => Promise<void>;
 }
 
 export interface DragItem {

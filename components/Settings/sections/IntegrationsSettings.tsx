@@ -46,7 +46,7 @@ export function IntegrationsSettings() {
     loadCalendars,
   } = useGoogleCalendar();
   
-  const { tasks, updateTask, addTask, projects, addProject } = useCalendar();
+  const { tasks, updateTask, addTask, projects, addProject, ensureProjectExists } = useCalendar();
   const [showGcalSettings, setShowGcalSettings] = useState(true);
 
   // Load profiles from storage
@@ -73,7 +73,8 @@ export function IntegrationsSettings() {
     await performFullSync(
       tasks,
       (taskId, updates) => updateTask(taskId, updates),
-      (taskData) => addTask(taskData)
+      (taskData) => addTask(taskData),
+      ensureProjectExists
     );
   };
 

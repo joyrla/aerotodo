@@ -323,7 +323,8 @@ export function useGoogleCalendar() {
   const performFullSync = useCallback(async (
     tasks: Task[],
     onTaskUpdate: (taskId: string, updates: Partial<Task>) => void,
-    onTaskCreate: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Task
+    onTaskCreate: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Task,
+    ensureProjectExists?: (profileId: string) => Promise<void>
   ): Promise<GoogleCalendarSyncResult | null> => {
     const accessToken = await getValidAccessToken();
     if (!accessToken || !settings.defaultCalendarId) {
@@ -338,6 +339,12 @@ export function useGoogleCalendar() {
         twoWaySync: settings.twoWaySync,
         defaultCalendarId: settings.defaultCalendarId
       });
+      
+      // Ensure the profile exists as a project in Supabase before syncing
+      // This prevents FK constraint failures when assigning projectId to tasks
+      if (settings.profileId && ensureProjectExists) {
+        await ensureProjectExists(settings.profileId);
+      }
       
       const result = await fullSync(
         tasks,

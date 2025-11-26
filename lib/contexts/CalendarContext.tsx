@@ -341,6 +341,16 @@ export function CalendarProvider({ children }: { children: React.ReactNode }) {
         if (task.id === id) {
           const updated = taskHelpers.updateTask(task, updates);
           
+          // Log if updating projectId
+          if (updates.projectId !== undefined) {
+            console.log('[CalendarContext] Updating task projectId:', {
+              taskId: id,
+              title: task.title,
+              oldProjectId: task.projectId,
+              newProjectId: updates.projectId
+            });
+          }
+          
           // Supabase update
           if (user) {
             const taskData = mapTaskToDB(updated, user.id);
@@ -348,9 +358,17 @@ export function CalendarProvider({ children }: { children: React.ReactNode }) {
               if (error?.code === 'PGRST204' || error?.message?.includes('order')) {
                 // Order column doesn't exist, try without it
                 const { order, ...taskDataWithoutOrder } = taskData;
-                supabase.from('tasks').update(taskDataWithoutOrder).eq('id', id);
+                supabase.from('tasks').update(taskDataWithoutOrder).eq('id', id).then(({ error: retryError }) => {
+                  if (retryError) {
+                    console.error('[CalendarContext] Supabase update failed (retry):', retryError.message, 'for task:', task.title);
+                  } else if (updates.projectId !== undefined) {
+                    console.log('[CalendarContext] Supabase projectId update SUCCESS for:', task.title);
+                  }
+                });
               } else if (error) {
-                console.error('Error updating task:', error.message);
+                console.error('[CalendarContext] Supabase update failed:', error.message, 'for task:', task.title);
+              } else if (updates.projectId !== undefined) {
+                console.log('[CalendarContext] Supabase projectId update SUCCESS for:', task.title);
               }
             });
           }
@@ -636,6 +654,58 @@ export function CalendarProvider({ children }: { children: React.ReactNode }) {
     setCurrentDateStr(date.toISOString());
   };
 
+  // Ensure a profile exists as a project in the database (for FK constraints)
+  const ensureProjectExists = async (profileId: string): Promise<void> => {
+    // Check if project already exists
+    const existingProject = projects.find(p => p.id === profileId);
+    if (existingProject) {
+      return; // Already exists
+    }
+
+    // Get the profile from profileStorage
+    const profiles = profileStorage.getProfiles();
+    const profile = profiles.find(p => p.id === profileId);
+    
+    if (!profile) {
+      console.warn('[CalendarContext] Profile not found:', profileId);
+      return;
+    }
+
+    // Create the project locally
+    const newProject: Project = {
+      id: profile.id,
+      name: profile.name,
+      color: profile.color,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Update local state
+    setProjectsState(prev => {
+      const updated = [...prev, newProject];
+      if (!user) {
+        storage.set('aerotodo_projects', updated);
+      }
+      return updated;
+    });
+
+    // Create in Supabase if logged in
+    if (user && supabase) {
+      try {
+        const { error } = await supabase
+          .from('projects')
+          .upsert(mapProjectToDB(newProject, user.id), { onConflict: 'id' });
+        
+        if (error) {
+          console.error('[CalendarContext] Error creating project for profile:', error);
+        } else {
+          console.log('[CalendarContext] Created project for profile:', profileId);
+        }
+      } catch (error) {
+        console.error('[CalendarContext] Error creating project:', error);
+      }
+    }
+  };
+
   const updateTimePresets = async (newPresets: TimePreset[]) => {
     setTimePresets(newPresets);
     storage.set('aerotodo_time_presets', newPresets);
@@ -730,6 +800,7 @@ export function CalendarProvider({ children }: { children: React.ReactNode }) {
     goToNextDay,
     timePresets,
     updateTimePresets,
+    ensureProjectExists,
   };
 
   return (

@@ -407,6 +407,50 @@ export async function fullSync(
   };
 
   try {
+    // Debug: Log all tasks and their profile status
+    console.log('[GCal Sync] === SYNC DEBUG INFO ===');
+    console.log('[GCal Sync] Target profile ID:', settings.profileId);
+    console.log('[GCal Sync] Total tasks:', tasks.length);
+    
+    const tasksWithGcalId = tasks.filter(t => t.googleCalendarEventId);
+    const tasksWithoutGcalId = tasks.filter(t => !t.googleCalendarEventId);
+    const tasksWithCorrectProfile = tasks.filter(t => t.projectId === settings.profileId);
+    const tasksWithWrongProfile = tasks.filter(t => t.googleCalendarEventId && t.projectId !== settings.profileId);
+    
+    console.log('[GCal Sync] Tasks with googleCalendarEventId:', tasksWithGcalId.length);
+    console.log('[GCal Sync] Tasks WITHOUT googleCalendarEventId:', tasksWithoutGcalId.length);
+    console.log('[GCal Sync] Tasks already with correct profile:', tasksWithCorrectProfile.length);
+    console.log('[GCal Sync] Tasks needing profile update:', tasksWithWrongProfile.length);
+    
+    // Log details of tasks that need updating
+    if (tasksWithWrongProfile.length > 0) {
+      console.log('[GCal Sync] Tasks to update:', tasksWithWrongProfile.map(t => ({
+        id: t.id,
+        title: t.title,
+        date: t.date,
+        currentProjectId: t.projectId,
+        googleCalendarEventId: t.googleCalendarEventId?.substring(0, 20) + '...'
+      })));
+    }
+    
+    // IMPORTANT: First, update ALL existing Google Calendar tasks to the selected profile
+    // This ensures tasks imported before the profile was set get updated
+    if (settings.profileId) {
+      const gcalTasks = tasks.filter(t => t.googleCalendarEventId && t.projectId !== settings.profileId);
+      console.log('[GCal Sync] Updating profile for', gcalTasks.length, 'GCal tasks...');
+      
+      for (const task of gcalTasks) {
+        try {
+          console.log('[GCal Sync] Updating task:', task.title, 'from projectId:', task.projectId, 'to:', settings.profileId);
+          onTaskUpdate(task.id, { projectId: settings.profileId });
+          result.updated++;
+        } catch (error) {
+          console.error('[GCal Sync] Failed to update task profile:', task.id, error);
+        }
+      }
+      console.log('[GCal Sync] Profile update complete. Updated:', result.updated, 'tasks');
+    }
+
     // Filter tasks to sync based on settings
     const tasksToSync = tasks.filter(task => {
       if (!task.date) return false; // Don't sync tasks without dates
@@ -449,13 +493,6 @@ export async function fullSync(
         tasks.map(t => t.googleCalendarEventId).filter(Boolean)
       );
       
-      // Map existing events to tasks for quick lookup to update profiles
-      const tasksByEventId = new Map(
-        tasks
-          .filter(t => t.googleCalendarEventId)
-          .map(t => [t.googleCalendarEventId!, t])
-      );
-      
       // Also create a set of existing tasks by title+date to catch duplicates
       // that might have been created without the googleCalendarEventId
       const existingTaskKeys = new Set(
@@ -465,20 +502,8 @@ export async function fullSync(
       for (const event of events) {
         if (event.status === 'cancelled') continue;
         
-        // Skip if we already have this event by ID
+        // Skip if we already have this event by ID (profile was already updated above)
         if (existingEventIds.has(event.id)) {
-          // Check if we need to update the profile assignment
-          const existingTask = tasksByEventId.get(event.id);
-          if (existingTask && settings.profileId && existingTask.projectId !== settings.profileId) {
-            console.log('[GCal Sync] Updating task profile:', {
-              taskId: existingTask.id,
-              title: existingTask.title,
-              oldProjectId: existingTask.projectId,
-              newProjectId: settings.profileId
-            });
-            onTaskUpdate(existingTask.id, { projectId: settings.profileId });
-            result.updated++;
-          }
           continue;
         }
 
