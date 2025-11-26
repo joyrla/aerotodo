@@ -7,6 +7,8 @@ export type TaskColor =
   | 'orange'
   | 'red'
   | 'teal'
+  | 'cyan'
+  | 'brown'
   | 'gray'
   | 'default';
 

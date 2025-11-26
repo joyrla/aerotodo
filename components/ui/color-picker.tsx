@@ -10,22 +10,21 @@ import {
 } from '@/components/ui/popover';
 
 /**
- * Google Calendar color palette (exact match)
- * Row 1: Tomato, Flamingo, Banana
- * Row 2: Tangerine, Sage, Peacock  
- * Row 3: Blueberry, Lavender, Grape
- * Row 4: Graphite + Clear
+ * Google Calendar color palette (all 11 colors + default/clear)
+ * Arranged in 4x3 grid to match Google Calendar's picker
  */
 export const TASK_COLORS: Record<TaskColor, string> = {
   default: '#78909c',  // Bluish gray for clear state
   red: '#d50000',      // Tomato
-  pink: '#e67c73',     // Flamingo
-  yellow: '#f4bf00',   // Banana
+  pink: '#e67c73',     // Flamingo  
   orange: '#f4511e',   // Tangerine
+  yellow: '#f6bf26',   // Banana
   green: '#33b679',    // Sage
   teal: '#039be5',     // Peacock
-  blue: '#4285f4',     // Blueberry (default Google blue)
+  cyan: '#00acc1',     // Cyan/Pool
+  blue: '#4285f4',     // Blueberry
   purple: '#7986cb',   // Lavender
+  brown: '#8d6e63',    // Cocoa
   gray: '#616161',     // Graphite
 };
 
@@ -34,14 +33,14 @@ export function getTaskColor(color: TaskColor | string): string {
   return TASK_COLORS[color as TaskColor] || TASK_COLORS.default;
 }
 
-// 4x3 grid layout matching Google Calendar order + clear option
-// Row 1: Red (Tomato), Pink (Flamingo), Yellow (Banana), Clear
-// Row 2: Orange (Tangerine), Green (Sage), Teal (Peacock), -
-// Row 3: Blue (Blueberry), Purple (Lavender), Gray (Graphite), -
+// 4x3 grid layout matching Google Calendar (11 colors + clear = 12)
+// Row 1: Red, Pink, Orange, Yellow
+// Row 2: Green, Teal, Cyan, Blue
+// Row 3: Purple, Brown, Gray, Clear
 const colorGrid: TaskColor[] = [
-  'red', 'pink', 'yellow', 'default',
-  'orange', 'green', 'teal',
-  'blue', 'purple', 'gray',
+  'red', 'pink', 'orange', 'yellow',
+  'green', 'teal', 'cyan', 'blue',
+  'purple', 'brown', 'gray', 'default',
 ];
 
 interface ColorPickerProps {
@@ -79,7 +78,7 @@ export function ColorPicker({
         className="w-auto p-1.5 rounded-lg shadow-md border-border/40 bg-popover/98 backdrop-blur-sm"
         sideOffset={6}
       >
-        {/* Compact 4-column grid */}
+        {/* 4x3 grid */}
         <div className="grid grid-cols-4 gap-1">
           {colorGrid.map((color) => {
             const isSelected = selectedColor === color;

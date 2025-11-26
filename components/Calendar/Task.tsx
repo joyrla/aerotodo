@@ -175,11 +175,11 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
   const hasColor = task.color && task.color !== 'default';
   const colorValue = getTaskColor(task.color);
 
-  // Color grid for popover - 4x3 layout matching Google Calendar
+  // Color grid for popover - 4x3 layout matching Google Calendar (11 colors + clear)
   const colorGrid: TaskColor[] = [
-    'red', 'pink', 'yellow', 'default',
-    'orange', 'green', 'teal',
-    'blue', 'purple', 'gray',
+    'red', 'pink', 'orange', 'yellow',
+    'green', 'teal', 'cyan', 'blue',
+    'purple', 'brown', 'gray', 'default',
   ];
 
   return (
