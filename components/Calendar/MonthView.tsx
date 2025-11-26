@@ -235,12 +235,12 @@ export function MonthView() {
       </div>
 
       {/* Calendar Grid - Equal height rows that fill available space */}
-      <div className="flex-1 grid border-l border-r border-b border-border" style={{ gridTemplateRows: `repeat(${weeks.length}, 1fr)` }}>
+      <div className="flex-1 grid border-l border-r border-b border-border overflow-hidden" style={{ gridTemplateRows: `repeat(${weeks.length}, 1fr)` }}>
         {weeks.map((week, weekIndex) => {
           return (
           <div 
             key={weekIndex} 
-            className="grid grid-cols-7 gap-0 border-t border-border"
+            className="grid grid-cols-7 gap-0 border-t border-border min-h-0"
           >
             {week.map((day) => {
               const dateStr = dateHelpers.toISOString(day);
@@ -288,7 +288,7 @@ export function MonthView() {
                   className={cn(
                     'group relative flex flex-col border-r border-border transition-all cursor-pointer overflow-hidden',
                     'p-1 md:p-2',
-                    'min-h-[60px] md:min-h-[100px]',
+                    'min-h-0 h-full',
                     'active:bg-accent/40 md:hover:bg-accent/30',
                     isToday && 'bg-primary/5',
                     !isCurrentMonth && 'bg-muted/30',
