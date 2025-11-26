@@ -11,21 +11,21 @@ import {
 
 /**
  * Google Calendar color palette (all 11 colors + default/clear)
- * Arranged in 4x3 grid to match Google Calendar's picker
+ * Colors adjusted for clear differentiation, especially reds
  */
 export const TASK_COLORS: Record<TaskColor, string> = {
   default: '#78909c',  // Bluish gray for clear state
-  red: '#d50000',      // Tomato
-  pink: '#e67c73',     // Flamingo  
-  orange: '#f4511e',   // Tangerine
-  yellow: '#f6bf26',   // Banana
-  green: '#33b679',    // Sage
-  teal: '#039be5',     // Peacock
-  cyan: '#00acc1',     // Cyan/Pool
-  blue: '#4285f4',     // Blueberry
-  purple: '#7986cb',   // Lavender
-  brown: '#8d6e63',    // Cocoa
-  gray: '#616161',     // Graphite
+  red: '#d50000',      // Tomato - pure red
+  pink: '#ec407a',     // Flamingo - magenta pink (more distinct from red)
+  orange: '#ff9100',   // Tangerine - amber orange (more yellow-orange)
+  yellow: '#fdd835',   // Banana - bright yellow
+  green: '#43a047',    // Sage - forest green
+  teal: '#00897b',     // Peacock - teal green
+  cyan: '#00acc1',     // Cyan/Pool - cyan blue
+  blue: '#1e88e5',     // Blueberry - bright blue
+  purple: '#8e24aa',   // Lavender - vivid purple
+  brown: '#6d4c41',    // Cocoa - warm brown
+  gray: '#757575',     // Graphite - neutral gray
 };
 
 /** Get the hex color value for a TaskColor */
@@ -93,9 +93,8 @@ export function ColorPicker({
             const isSelected = selectedColor === color;
             const isDefault = color === 'default';
             const colorValue = TASK_COLORS[color];
-            // Use same opacity as task highlight (12%) for preview
-            const previewColor = isDefault ? 'transparent' : hexToRgba(colorValue, 0.35);
-            const borderColor = isDefault ? 'transparent' : hexToRgba(colorValue, 0.6);
+            // Solid fill for clear differentiation - no borders
+            const previewColor = isDefault ? 'transparent' : hexToRgba(colorValue, 0.45);
 
             return (
               <button
@@ -111,9 +110,6 @@ export function ColorPicker({
                 )}
                 style={{
                   backgroundColor: previewColor,
-                  borderColor: isDefault ? undefined : borderColor,
-                  borderWidth: isDefault ? undefined : '2px',
-                  borderStyle: isDefault ? undefined : 'solid',
                   animationDelay: `${index * 20}ms`,
                 }}
               >

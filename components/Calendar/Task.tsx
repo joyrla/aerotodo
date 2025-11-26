@@ -355,15 +355,14 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
                       )}
                       sideOffset={8}
                     >
-                      {/* 4x3 grid with matching preview colors */}
+                      {/* 4x3 grid - no borders, solid fill */}
                       <div className="grid grid-cols-4 gap-1.5">
-                        {colorGrid.map((color, index) => {
+                        {colorGrid.map((color) => {
                           const isSelected = (task.color || 'default') === color;
                           const isDefault = color === 'default';
                           const value = TASK_COLORS[color];
-                          // Match task highlight opacity for preview
-                          const previewColor = isDefault ? 'transparent' : hexToRgba(value, 0.35);
-                          const borderColor = isDefault ? 'transparent' : hexToRgba(value, 0.6);
+                          // Solid fill for clear differentiation - no borders
+                          const previewColor = isDefault ? 'transparent' : hexToRgba(value, 0.45);
 
                           return (
                             <button
@@ -382,9 +381,6 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
                               )}
                               style={{
                                 backgroundColor: previewColor,
-                                borderColor: isDefault ? undefined : borderColor,
-                                borderWidth: isDefault ? undefined : '2px',
-                                borderStyle: isDefault ? undefined : 'solid',
                               }}
                             >
                               {/* Selection ring */}
