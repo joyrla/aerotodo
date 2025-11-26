@@ -470,6 +470,12 @@ export async function fullSync(
           // Check if we need to update the profile assignment
           const existingTask = tasksByEventId.get(event.id);
           if (existingTask && settings.profileId && existingTask.projectId !== settings.profileId) {
+            console.log('[GCal Sync] Updating task profile:', {
+              taskId: existingTask.id,
+              title: existingTask.title,
+              oldProjectId: existingTask.projectId,
+              newProjectId: settings.profileId
+            });
             onTaskUpdate(existingTask.id, { projectId: settings.profileId });
             result.updated++;
           }
@@ -498,6 +504,12 @@ export async function fullSync(
 
         // Create new task from Google event
         try {
+          console.log('[GCal Sync] Creating new task from event:', {
+            eventId: event.id,
+            title: taskData.title,
+            assignedProfileId: settings.profileId
+          });
+          
           onTaskCreate({
             title: taskData.title || 'Untitled',
             color: taskData.color || 'default',

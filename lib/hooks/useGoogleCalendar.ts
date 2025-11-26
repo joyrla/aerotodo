@@ -333,6 +333,12 @@ export function useGoogleCalendar() {
 
     setIsSyncing(true);
     try {
+      console.log('[useGoogleCalendar] Starting full sync with settings:', {
+        profileId: settings.profileId,
+        twoWaySync: settings.twoWaySync,
+        defaultCalendarId: settings.defaultCalendarId
+      });
+      
       const result = await fullSync(
         tasks,
         accessToken,

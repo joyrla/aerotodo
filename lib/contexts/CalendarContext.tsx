@@ -56,7 +56,21 @@ export function CalendarProvider({ children }: { children: React.ReactNode }) {
     // Filter tasks by profile
     // Strict filtering: Only show tasks explicitly assigned to this profile
     // Tasks with no profile only show in "View All"
-    return tasks.filter(task => task.projectId === currentProfileId);
+    const filtered = tasks.filter(task => task.projectId === currentProfileId);
+    
+    // Debug logging
+    console.log('[CalendarContext] Filtering tasks:', {
+      currentProfileId,
+      totalTasks: tasks.length,
+      filteredCount: filtered.length,
+      gcalTasks: tasks.filter(t => t.googleCalendarEventId).map(t => ({
+        title: t.title,
+        projectId: t.projectId,
+        googleCalendarEventId: t.googleCalendarEventId
+      }))
+    });
+    
+    return filtered;
   }, [tasks, currentProfileId]);
 
   // Set current profile and persist
