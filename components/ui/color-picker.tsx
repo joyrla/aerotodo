@@ -10,20 +10,23 @@ import {
 } from '@/components/ui/popover';
 
 /**
- * Task highlight colors - vibrant, saturated colors that look good as highlights
- * These are the actual colors used for task backgrounds (at ~12% opacity)
+ * Google Calendar color palette (exact match)
+ * Row 1: Tomato, Flamingo, Banana
+ * Row 2: Tangerine, Sage, Peacock  
+ * Row 3: Blueberry, Lavender, Grape
+ * Row 4: Graphite + Clear
  */
 export const TASK_COLORS: Record<TaskColor, string> = {
-  default: '#9ca3af',  // Gray placeholder
-  red: '#dc2626',      // Vibrant red
-  orange: '#ea580c',   // Warm orange
-  yellow: '#eab308',   // Golden yellow
-  green: '#16a34a',    // Fresh green
-  teal: '#0891b2',     // Cyan teal
-  blue: '#2563eb',     // Strong blue
-  purple: '#7c3aed',   // Rich purple
-  pink: '#db2777',     // Hot pink
-  gray: '#6b7280',     // Neutral gray
+  default: '#78909c',  // Bluish gray for clear state
+  red: '#d50000',      // Tomato
+  pink: '#e67c73',     // Flamingo
+  yellow: '#f4bf00',   // Banana
+  orange: '#f4511e',   // Tangerine
+  green: '#33b679',    // Sage
+  teal: '#039be5',     // Peacock
+  blue: '#4285f4',     // Blueberry (default Google blue)
+  purple: '#7986cb',   // Lavender
+  gray: '#616161',     // Graphite
 };
 
 /** Get the hex color value for a TaskColor */
@@ -31,18 +34,14 @@ export function getTaskColor(color: TaskColor | string): string {
   return TASK_COLORS[color as TaskColor] || TASK_COLORS.default;
 }
 
-// Color grid layout for the picker
-const colorGrid: Array<{ color: TaskColor; label: string }> = [
-  { color: 'default', label: 'No color' },
-  { color: 'red', label: 'Red' },
-  { color: 'yellow', label: 'Yellow' },
-  { color: 'orange', label: 'Orange' },
-  { color: 'green', label: 'Green' },
-  { color: 'teal', label: 'Teal' },
-  { color: 'blue', label: 'Blue' },
-  { color: 'purple', label: 'Purple' },
-  { color: 'pink', label: 'Pink' },
-  { color: 'gray', label: 'Gray' },
+// 4x3 grid layout matching Google Calendar order + clear option
+// Row 1: Red (Tomato), Pink (Flamingo), Yellow (Banana), Clear
+// Row 2: Orange (Tangerine), Green (Sage), Teal (Peacock), -
+// Row 3: Blue (Blueberry), Purple (Lavender), Gray (Graphite), -
+const colorGrid: TaskColor[] = [
+  'red', 'pink', 'yellow', 'default',
+  'orange', 'green', 'teal',
+  'blue', 'purple', 'gray',
 ];
 
 interface ColorPickerProps {
@@ -77,12 +76,12 @@ export function ColorPicker({
       <PopoverContent
         side={side}
         align={align}
-        className="w-auto p-2.5 shadow-lg border-border/50 rounded-xl"
-        sideOffset={4}
+        className="w-auto p-1.5 rounded-lg shadow-md border-border/40 bg-popover/98 backdrop-blur-sm"
+        sideOffset={6}
       >
-        {/* Compact 3x4 grid */}
-        <div className="grid grid-cols-3 gap-2">
-          {colorGrid.map(({ color, label }) => {
+        {/* Compact 4-column grid */}
+        <div className="grid grid-cols-4 gap-1">
+          {colorGrid.map((color) => {
             const isSelected = selectedColor === color;
             const isDefault = color === 'default';
             const colorValue = TASK_COLORS[color];
@@ -92,26 +91,28 @@ export function ColorPicker({
                 key={color}
                 onClick={() => handleColorSelect(color)}
                 className={cn(
-                  'w-8 h-8 rounded-full transition-all duration-150',
-                  'hover:scale-110 active:scale-95',
-                  'focus:outline-none',
-                  isSelected && 'ring-2 ring-offset-2 ring-offset-popover',
-                  isDefault && 'border-2 border-dashed border-muted-foreground/30'
+                  'w-6 h-6 rounded-full transition-transform duration-100',
+                  'hover:scale-115 active:scale-95',
+                  'focus:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                  isDefault && 'border border-dashed border-muted-foreground/40'
                 )}
                 style={{
                   backgroundColor: isDefault ? 'transparent' : colorValue,
-                  ['--tw-ring-color' as string]: isDefault ? 'hsl(var(--muted-foreground))' : colorValue,
+                  boxShadow: isSelected 
+                    ? `0 0 0 2px var(--popover), 0 0 0 4px ${isDefault ? 'hsl(var(--muted-foreground))' : colorValue}`
+                    : undefined,
                 }}
-                title={label}
-                aria-label={label}
               >
                 {isSelected && (
                   <Check
                     className={cn(
-                      'w-4 h-4 m-auto drop-shadow-sm',
+                      'w-3 h-3 m-auto',
                       isDefault ? 'text-muted-foreground' : 'text-white'
                     )}
-                    strokeWidth={3}
+                    strokeWidth={2.5}
+                    style={{
+                      filter: isDefault ? 'none' : 'drop-shadow(0 1px 1px rgba(0,0,0,0.3))'
+                    }}
                   />
                 )}
               </button>

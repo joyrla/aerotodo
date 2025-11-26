@@ -175,8 +175,12 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
   const hasColor = task.color && task.color !== 'default';
   const colorValue = getTaskColor(task.color);
 
-  // Color grid for popover
-  const colorGrid: TaskColor[] = ['default', 'red', 'yellow', 'orange', 'green', 'teal', 'blue', 'purple', 'pink', 'gray'];
+  // Color grid for popover - 4x3 layout matching Google Calendar
+  const colorGrid: TaskColor[] = [
+    'red', 'pink', 'yellow', 'default',
+    'orange', 'green', 'teal',
+    'blue', 'purple', 'gray',
+  ];
 
   return (
     <>
@@ -314,7 +318,9 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
                 <div className={cn(
                   'relative flex items-center transition-all duration-[250ms] ease-out pointer-events-auto',
                   'opacity-0 translate-x-2 group-hover/task:opacity-100 group-hover/task:translate-x-0',
-                  'rounded-md bg-background shadow-sm py-0.5 gap-0.5 pr-1 pl-1'
+                  'rounded-md bg-background shadow-sm py-0.5 gap-0.5 pr-1 pl-1',
+                  // Keep visible when color picker is open
+                  showColorPicker && 'opacity-100 translate-x-0'
                 )}>
                   {/* Highlight Button with Popover */}
                   <Popover open={showColorPicker} onOpenChange={setShowColorPicker}>
@@ -342,11 +348,11 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
                     <PopoverContent
                       side="bottom"
                       align="end"
-                      className="w-auto p-2.5 rounded-xl shadow-lg border-border/50"
-                      sideOffset={4}
+                      className="w-auto p-1.5 rounded-lg shadow-md border-border/40 bg-popover/98 backdrop-blur-sm"
+                      sideOffset={6}
                     >
-                      {/* Compact 3x4 color grid */}
-                      <div className="grid grid-cols-3 gap-2">
+                      {/* Compact 4-column grid */}
+                      <div className="grid grid-cols-4 gap-1">
                         {colorGrid.map((color) => {
                           const isSelected = (task.color || 'default') === color;
                           const isDefault = color === 'default';
@@ -360,21 +366,25 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
                                 handleColorChange(color);
                               }}
                               className={cn(
-                                'w-8 h-8 rounded-full transition-all duration-150',
-                                'hover:scale-110 active:scale-95',
-                                'focus:outline-none',
-                                isSelected && 'ring-2 ring-offset-2 ring-offset-popover',
-                                isDefault && 'border-2 border-dashed border-muted-foreground/30'
+                                'w-6 h-6 rounded-full transition-transform duration-100',
+                                'hover:scale-115 active:scale-95',
+                                'focus:outline-none focus-visible:ring-1 focus-visible:ring-ring',
+                                isDefault && 'border border-dashed border-muted-foreground/40'
                               )}
                               style={{
                                 backgroundColor: isDefault ? 'transparent' : value,
-                                ['--tw-ring-color' as string]: isDefault ? 'hsl(var(--muted-foreground))' : value,
+                                boxShadow: isSelected 
+                                  ? `0 0 0 2px var(--popover), 0 0 0 4px ${isDefault ? 'hsl(var(--muted-foreground))' : value}`
+                                  : undefined,
                               }}
                             >
                               {isSelected && (
                                 <Check
-                                  className={cn('w-4 h-4 m-auto drop-shadow-sm', isDefault ? 'text-muted-foreground' : 'text-white')}
-                                  strokeWidth={3}
+                                  className={cn('w-3 h-3 m-auto', isDefault ? 'text-muted-foreground' : 'text-white')}
+                                  strokeWidth={2.5}
+                                  style={{
+                                    filter: isDefault ? 'none' : 'drop-shadow(0 1px 1px rgba(0,0,0,0.3))'
+                                  }}
                                 />
                               )}
                             </button>
