@@ -15,16 +15,16 @@ interface ModuleRendererProps {
 }
 
 export function ModuleRenderer({ config, enableDragDrop = false }: ModuleRendererProps) {
-  const { tasks, projects } = useCalendar();
+  const { tasks, projects, currentProfileId } = useCalendar();
   const definition = getModuleDefinition(config.id);
   
   if (!definition || !config.enabled) {
     return null;
   }
 
-  const filteredTasks = definition.filterTasks(tasks, projects, config.config);
+  const filteredTasks = definition.filterTasks(tasks, projects, config.config, currentProfileId);
   const taskCount = definition.getTaskCount 
-    ? definition.getTaskCount(tasks, projects, config.config)
+    ? definition.getTaskCount(tasks, projects, config.config, currentProfileId)
     : filteredTasks.length;
 
   const moduleProps: ModuleComponentProps = {

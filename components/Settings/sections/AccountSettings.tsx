@@ -19,7 +19,13 @@ export function AccountSettings() {
   useEffect(() => {
     if (user) {
       setEmail(user.email || '');
-      setDisplayName(user.user_metadata?.full_name || user.user_metadata?.name || '');
+      // Get name from various possible metadata fields (Google, email signup, etc.)
+      const name = user.user_metadata?.full_name 
+        || user.user_metadata?.name 
+        || user.user_metadata?.display_name
+        || user.email?.split('@')[0] // Fallback to email username
+        || '';
+      setDisplayName(name);
     } else {
       // Reset if no user (logged out)
       setEmail('');
@@ -132,6 +138,7 @@ export function AccountSettings() {
               variant="outline" 
               className="w-full justify-start font-mono text-destructive hover:text-destructive hover:bg-destructive/10"
               onClick={() => signOut()}
+              disabled={!user}
             >
               <LogOut className="w-4 h-4 mr-2" />
               Sign Out

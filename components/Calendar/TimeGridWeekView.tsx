@@ -26,7 +26,7 @@ interface DragSelection {
 }
 
 export function TimeGridWeekView() {
-  const { state, tasks, moveTask, updateTask, addTask } = useCalendar();
+  const { state, filteredTasks: tasks, moveTask, updateTask, addTask, currentProfileId } = useCalendar();
   const { preferences } = useSettings();
   const [isMounted, setIsMounted] = useState(false);
   const [dragSelection, setDragSelection] = useState<DragSelection | null>(null);
@@ -88,6 +88,7 @@ export function TimeGridWeekView() {
       color: 'default' as const,
       completed: false,
       date: dateStr,
+      projectId: currentProfileId,
       timeSlot: {
         start: `${hour.toString().padStart(2, '0')}:00`,
         end: `${(hour + 1).toString().padStart(2, '0')}:00`
@@ -174,6 +175,7 @@ export function TimeGridWeekView() {
         color: 'default' as const,
         completed: false,
         date: dragSelection.dateStr,
+        projectId: currentProfileId,
         timeSlot: {
           start: `${startHour.toString().padStart(2, '0')}:00`,
           end: `${endHour.toString().padStart(2, '0')}:00`
@@ -235,6 +237,7 @@ export function TimeGridWeekView() {
         color: 'default' as const,
         completed: false,
         date: dragSelection.dateStr,
+        projectId: currentProfileId,
         timeSlot: {
           start: `${startHour.toString().padStart(2, '0')}:00`,
           end: `${endHour.toString().padStart(2, '0')}:00`

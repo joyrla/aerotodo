@@ -70,6 +70,8 @@ export function CalendarNav({ onShowKeyboardHelp, weekViewMode = 'list', onWeekV
     goToNextMonth,
     goToPreviousDay,
     goToNextDay,
+    currentProfileId: contextProfileId,
+    setCurrentProfileId: setContextProfileId,
   } = useCalendar();
 
   const { user, signOut } = useAuth();
@@ -90,15 +92,13 @@ export function CalendarNav({ onShowKeyboardHelp, weekViewMode = 'list', onWeekV
 
   const handleProfileSwitch = (profileId: string) => {
     if (profileId === 'view-all') {
-      localStorage.setItem('viewAllProfiles', 'true');
       setIsViewAll(true);
-      window.location.reload();
+      setContextProfileId(null); // Update context - no reload needed
     } else {
-      localStorage.setItem('viewAllProfiles', 'false');
       profileStorage.setCurrentProfile(profileId);
       setCurrentProfileId(profileId);
       setIsViewAll(false);
-      window.location.reload();
+      setContextProfileId(profileId); // Update context - no reload needed
     }
   };
 

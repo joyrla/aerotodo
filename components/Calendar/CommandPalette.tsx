@@ -27,7 +27,7 @@ const commands = [
 export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(0);
-  const { setViewMode, goToToday, tasks } = useCalendar();
+  const { setViewMode, goToToday, filteredTasks: tasks } = useCalendar();
   const router = useRouter();
 
   const filteredCommands = search

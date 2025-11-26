@@ -14,7 +14,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 
 export function MonthView() {
-  const { state, tasks, addTask, deleteTask } = useCalendar();
+  const { state, filteredTasks: tasks, addTask, deleteTask, currentProfileId } = useCalendar();
   const { preferences } = useSettings();
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTask, setSelectedTask] = useState<string | null>(null);
@@ -122,6 +122,7 @@ export function MonthView() {
       color: 'default',
       completed: false,
       date: dateStr,
+      projectId: currentProfileId,
     });
     
     // addTask returns the created task, open modal immediately
@@ -140,6 +141,7 @@ export function MonthView() {
           color: 'default',
           completed: false,
           date: dateStr,
+          projectId: currentProfileId,
         });
         setNewTaskTitle('');
         setEditingDate(null);
@@ -156,6 +158,7 @@ export function MonthView() {
           color: 'default',
           completed: false,
           date: dateStr,
+          projectId: currentProfileId,
         });
       }
       setNewTaskTitle('');
@@ -186,6 +189,7 @@ export function MonthView() {
           color: 'default',
           completed: false,
           date: dateStr,
+          projectId: currentProfileId,
         });
       }
       setNewTaskTitle('');

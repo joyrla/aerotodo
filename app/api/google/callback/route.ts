@@ -1,6 +1,4 @@
 import { NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
 
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 
@@ -13,13 +11,13 @@ export async function GET(request: Request) {
   // Handle OAuth errors
   if (error) {
     return NextResponse.redirect(
-      `${origin}/settings?section=integrations&error=${encodeURIComponent(error)}`
+      `${origin}/settings?section=integrations&gcal_error=${encodeURIComponent(error)}`
     );
   }
 
   if (!code) {
     return NextResponse.redirect(
-      `${origin}/settings?section=integrations&error=no_code`
+      `${origin}/settings?section=integrations&gcal_error=no_code`
     );
   }
 
@@ -52,65 +50,26 @@ export async function GET(request: Request) {
 
     const tokens = await tokenResponse.json();
     
-    // Store tokens in user settings via Supabase
-    const cookieStore = cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-    
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return NextResponse.redirect(
-        `${origin}/settings?section=integrations&error=not_authenticated`
-      );
-    }
-
-    // Get current settings
-    const { data: settingsData } = await supabase
-      .from('user_settings')
-      .select('preferences')
-      .eq('user_id', user.id)
-      .single();
-
-    const currentPrefs = settingsData?.preferences || {};
-    
     // Calculate token expiry
     const tokenExpiry = new Date(Date.now() + (tokens.expires_in * 1000)).toISOString();
 
-    // Update settings with Google Calendar tokens
-    const { error: updateError } = await supabase
-      .from('user_settings')
-      .update({
-        preferences: {
-          ...currentPrefs,
-          googleCalendar: {
-            enabled: true,
-            accessToken: tokens.access_token,
-            refreshToken: tokens.refresh_token,
-            tokenExpiry,
-            twoWaySync: false,
-            syncAllTasks: false,
-            syncTimeBlockedOnly: true,
-          },
-        },
-        updated_at: new Date().toISOString(),
-      })
-      .eq('user_id', user.id);
-
-    if (updateError) {
-      throw updateError;
-    }
-
-    // Redirect back to settings with success
+    // Redirect back to settings with tokens in URL (client will handle storage)
+    // Using hash fragment so tokens don't get logged in server logs
+    const tokenData = {
+      accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token,
+      tokenExpiry,
+    };
+    
     return NextResponse.redirect(
-      `${origin}/settings?section=integrations&gcal=connected`
+      `${origin}/settings?section=integrations&gcal_success=true#gcal_tokens=${encodeURIComponent(JSON.stringify(tokenData))}`
     );
   } catch (err) {
     console.error('Google Calendar OAuth error:', err);
     return NextResponse.redirect(
-      `${origin}/settings?section=integrations&error=${encodeURIComponent(
+      `${origin}/settings?section=integrations&gcal_error=${encodeURIComponent(
         err instanceof Error ? err.message : 'Unknown error'
       )}`
     );
   }
 }
-

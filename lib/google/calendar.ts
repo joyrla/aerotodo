@@ -444,18 +444,45 @@ export async function fullSync(
         maxResults: 250,
       });
 
-      // Find events not in our tasks
+      // Find events not in our tasks - check by googleCalendarEventId
       const existingEventIds = new Set(
         tasks.map(t => t.googleCalendarEventId).filter(Boolean)
+      );
+      
+      // Also create a set of existing tasks by title+date to catch duplicates
+      // that might have been created without the googleCalendarEventId
+      const existingTaskKeys = new Set(
+        tasks.map(t => `${t.title}|${t.date}|${t.timeSlot?.start || ''}`).filter(Boolean)
       );
 
       for (const event of events) {
         if (event.status === 'cancelled') continue;
+        
+        // Skip if we already have this event by ID
         if (existingEventIds.has(event.id)) continue;
+
+        // Parse the event to check for duplicate by content
+        const taskData = googleEventToTask(event, settings.profileId);
+        const taskKey = `${taskData.title || 'Untitled'}|${taskData.date || ''}|${taskData.timeSlot?.start || ''}`;
+        
+        // Skip if we already have a task with same title, date, and time
+        if (existingTaskKeys.has(taskKey)) {
+          // Update the existing task with the googleCalendarEventId if missing
+          const existingTask = tasks.find(t => 
+            t.title === (taskData.title || 'Untitled') && 
+            t.date === taskData.date &&
+            t.timeSlot?.start === taskData.timeSlot?.start &&
+            !t.googleCalendarEventId
+          );
+          if (existingTask) {
+            onTaskUpdate(existingTask.id, { googleCalendarEventId: event.id });
+            result.updated++;
+          }
+          continue;
+        }
 
         // Create new task from Google event
         try {
-          const taskData = googleEventToTask(event, settings.profileId);
           onTaskCreate({
             title: taskData.title || 'Untitled',
             color: taskData.color || 'default',
@@ -468,6 +495,11 @@ export async function fullSync(
             repeatPattern: taskData.repeatPattern,
             projectId: settings.profileId,
           });
+          
+          // Add to existing keys to prevent duplicates within the same sync
+          existingTaskKeys.add(taskKey);
+          existingEventIds.add(event.id);
+          
           result.created++;
         } catch (error) {
           result.errors.push(`Failed to import event "${event.summary}": ${error}`);

@@ -1,7 +1,7 @@
 'use client';
 
 import { ModuleDefinition, ModuleId } from '@/types/modules';
-import { Task } from '@/types';
+import { Task, GoogleCalendarSettings, Project } from '@/types';
 import { dateHelpers } from '@/lib/utils/dateHelpers';
 import { taskHelpers } from '@/lib/utils/taskHelpers';
 import { 
@@ -14,6 +14,28 @@ import {
   FolderKanban,
 } from 'lucide-react';
 
+// Helper to check if a task should be treated as an event (not a task)
+// This excludes it from task-focused modules like Overdue
+export function isGoogleCalendarEvent(task: Task): boolean {
+  // If the task has a Google Calendar event ID, it came from GCal
+  return !!task.googleCalendarEventId;
+}
+
+// Get the treatAsEvents setting from localStorage
+function getGcalTreatAsEvents(): boolean {
+  if (typeof window === 'undefined') return true;
+  try {
+    const settings = localStorage.getItem('gcal_settings');
+    if (settings) {
+      const parsed = JSON.parse(settings) as GoogleCalendarSettings;
+      return parsed.treatAsEvents ?? true; // Default to true
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return true; // Default to treating GCal imports as events
+}
+
 export const moduleRegistry: Record<ModuleId, ModuleDefinition> = {
   overdue: {
     id: 'overdue',
@@ -23,10 +45,19 @@ export const moduleRegistry: Record<ModuleId, ModuleDefinition> = {
     defaultBorderColor: 'border-red-500/30',
     canRename: false,
     canDisable: false,
-    filterTasks: (tasks: Task[]) => {
+    filterTasks: (tasks: Task[], projects: Project[], config, currentProfileId) => {
+      // Filter by profile if set
+      const profileTasks = currentProfileId 
+        ? tasks.filter(t => t.projectId === currentProfileId)
+        : tasks;
+
       const todayStr = dateHelpers.toISOString(new Date());
-      return tasks.filter(task => {
+      const treatAsEvents = getGcalTreatAsEvents();
+      
+      return profileTasks.filter(task => {
         if (!task.date || task.completed) return false;
+        // Exclude Google Calendar events if treatAsEvents is enabled
+        if (treatAsEvents && isGoogleCalendarEvent(task)) return false;
         return task.date < todayStr;
       });
     },
@@ -40,6 +71,7 @@ export const moduleRegistry: Record<ModuleId, ModuleDefinition> = {
     canRename: true,
     canDisable: true,
     filterTasks: (tasks: Task[]) => {
+      // Inbox ignores profile filter (Global Inbox)
       return taskHelpers.filterSomedayTasks(tasks);
     },
   },
@@ -51,15 +83,22 @@ export const moduleRegistry: Record<ModuleId, ModuleDefinition> = {
     defaultBorderColor: 'border-blue-500/30',
     canRename: true,
     canDisable: true,
-    filterTasks: (tasks: Task[]) => {
+    filterTasks: (tasks: Task[], projects: Project[], config, currentProfileId) => {
+      // Filter by profile if set
+      const profileTasks = currentProfileId 
+        ? tasks.filter(t => t.projectId === currentProfileId)
+        : tasks;
+
       const today = new Date();
       const nextWeekDate = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
       const startOfNextWeek = dateHelpers.getWeekStart(nextWeekDate);
+      const endOfNextWeek = new Date(startOfNextWeek);
+      endOfNextWeek.setDate(endOfNextWeek.getDate() + 7); // 7 days window
       
-      return tasks.filter(task => {
+      return profileTasks.filter(task => {
         if (!task.date || task.completed) return false;
         const taskDate = dateHelpers.parseDate(task.date);
-        return taskDate >= startOfNextWeek;
+        return taskDate >= startOfNextWeek && taskDate < endOfNextWeek;
       });
     },
   },

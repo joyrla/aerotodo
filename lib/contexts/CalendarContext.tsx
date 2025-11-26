@@ -1,8 +1,8 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { Task, Project, CalendarState, ViewMode, CalendarContextType, TimePreset } from '@/types';
-import { storage } from '@/lib/utils/storage';
+import { storage, profileStorage } from '@/lib/utils/storage';
 import { taskHelpers } from '@/lib/utils/taskHelpers';
 import { dateHelpers } from '@/lib/utils/dateHelpers';
 import { useAuth } from '@/lib/contexts/AuthContext';
@@ -26,6 +26,7 @@ export function CalendarProvider({ children }: { children: React.ReactNode }) {
   const [viewMode, setViewModeState] = useState<ViewMode>('week');
   const [currentDateStr, setCurrentDateStrState] = useState<string>(new Date().toISOString());
   const [timePresets, setTimePresets] = useState<TimePreset[]>(DEFAULT_TIME_PRESETS);
+  const [currentProfileId, setCurrentProfileIdState] = useState<string | null>(null);
   const trashTimeoutsRef = React.useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   const [state, setState] = useState<CalendarState>({
@@ -33,6 +34,41 @@ export function CalendarProvider({ children }: { children: React.ReactNode }) {
     viewMode: 'week',
     selectedDate: null,
   });
+
+  // Load current profile from storage
+  useEffect(() => {
+    const isViewAll = localStorage.getItem('viewAllProfiles') === 'true';
+    if (isViewAll) {
+      setCurrentProfileIdState(null);
+    } else {
+      const storedProfileId = profileStorage.getCurrentProfile();
+      setCurrentProfileIdState(storedProfileId);
+    }
+  }, []);
+
+  // Filter tasks by current profile
+  const filteredTasks = useMemo(() => {
+    // If viewing all profiles, return all tasks
+    if (currentProfileId === null) {
+      return tasks;
+    }
+    
+    // Filter tasks by profile
+    // Strict filtering: Only show tasks explicitly assigned to this profile
+    // Tasks with no profile only show in "View All"
+    return tasks.filter(task => task.projectId === currentProfileId);
+  }, [tasks, currentProfileId]);
+
+  // Set current profile and persist
+  const setCurrentProfileId = (id: string | null) => {
+    setCurrentProfileIdState(id);
+    if (id === null) {
+      localStorage.setItem('viewAllProfiles', 'true');
+    } else {
+      localStorage.setItem('viewAllProfiles', 'false');
+      profileStorage.setCurrentProfile(id);
+    }
+  };
 
   // Helper to map task to DB format
   const mapTaskToDB = (task: Task, userId: string) => ({
@@ -616,6 +652,9 @@ export function CalendarProvider({ children }: { children: React.ReactNode }) {
     state,
     tasks,
     projects,
+    filteredTasks,
+    currentProfileId,
+    setCurrentProfileId,
     addTask,
     updateTask,
     deleteTask,

@@ -30,8 +30,8 @@ export interface ModuleDefinition {
   canRename?: boolean;
   canDisable?: boolean;
   comingSoon?: boolean;
-  filterTasks: (tasks: Task[], projects: Project[], config?: Record<string, any>) => Task[];
-  getTaskCount?: (tasks: Task[], projects: Project[], config?: Record<string, any>) => number;
+  filterTasks: (tasks: Task[], projects: Project[], config?: Record<string, any>, currentProfileId?: string | null) => Task[];
+  getTaskCount?: (tasks: Task[], projects: Project[], config?: Record<string, any>, currentProfileId?: string | null) => number;
 }
 
 export interface ModuleComponentProps {

@@ -19,7 +19,7 @@ interface WeekViewProps {
 }
 
 export function WeekView({ viewMode = 'list' }: WeekViewProps) {
-  const { state, tasks, moveTask } = useCalendar();
+  const { state, filteredTasks: tasks, moveTask, currentProfileId } = useCalendar();
   const { preferences } = useSettings();
   const [isMounted, setIsMounted] = useState(false);
   const weekDays = dateHelpers.getWeekDays(state.currentDate, preferences.weekStartsOn as 0 | 1);
@@ -148,6 +148,7 @@ export function WeekView({ viewMode = 'list' }: WeekViewProps) {
                       droppableId={dateStr}
                       enableDragDrop={false}
                       showLinedBackground={false}
+                      projectId={currentProfileId}
                     />
                   </div>
                 </div>
@@ -215,6 +216,7 @@ export function WeekView({ viewMode = 'list' }: WeekViewProps) {
                       tasks={dayTasks}
                       droppableId={dateStr}
                       showLinedBackground={false}
+                      projectId={currentProfileId}
                     />
                   </div>
                 </div>

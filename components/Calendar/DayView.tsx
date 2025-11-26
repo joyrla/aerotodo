@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 
 export function DayView() {
-  const { state, tasks, moveTask } = useCalendar();
+  const { state, filteredTasks: tasks, moveTask, currentProfileId } = useCalendar();
   const [isMounted, setIsMounted] = useState(false);
   const currentDay = state.currentDate;
   const dateStr = dateHelpers.toISOString(currentDay);
@@ -91,6 +91,7 @@ export function DayView() {
             tasks={dayTasks}
             droppableId={dateStr}
             enableDragDrop={false}
+            projectId={currentProfileId}
           />
         </div>
 
@@ -117,6 +118,7 @@ export function DayView() {
             date={dateStr}
             tasks={dayTasks}
             droppableId={dateStr}
+            projectId={currentProfileId}
           />
         </div>
 

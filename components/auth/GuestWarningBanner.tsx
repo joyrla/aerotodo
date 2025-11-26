@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Info, X } from 'lucide-react';
@@ -11,11 +11,18 @@ interface GuestWarningBannerProps {
 }
 
 export function GuestWarningBanner({ onSignUpClick }: GuestWarningBannerProps) {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const [dismissed, setDismissed] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  // Don't show if user is logged in or banner is dismissed
-  if (user || dismissed) {
+  // Wait for mount to avoid hydration issues
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Don't show while loading auth state, if user is logged in, or if banner is dismissed
+  // Also don't show until mounted to prevent flash during page reload
+  if (!mounted || loading || user || dismissed) {
     return null;
   }
 

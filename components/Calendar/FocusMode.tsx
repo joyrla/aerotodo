@@ -14,7 +14,7 @@ interface FocusModeProps {
 }
 
 export function FocusMode({ open, onClose }: FocusModeProps) {
-  const { tasks } = useCalendar();
+  const { filteredTasks: tasks } = useCalendar();
   
   // Get today's incomplete tasks
   const today = dateHelpers.toISOString(new Date());
