@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Task, GoogleCalendarSettings, GoogleCalendar, GoogleCalendarSyncResult } from '@/types';
 import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/lib/contexts/AuthContext';
@@ -19,8 +19,6 @@ const DEFAULT_GCAL_SETTINGS: GoogleCalendarSettings = {
   twoWaySync: false,
   syncAllTasks: false,
   syncTimeBlockedOnly: true,
-  deleteFromGcal: true, // Default to deleting from GCal when task is deleted
-  treatAsEvents: true, // Default: treat GCal imports as events (exclude from Overdue)
 };
 
 export function useGoogleCalendar() {
@@ -31,124 +29,25 @@ export function useGoogleCalendar() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
 
-  // Save settings to Supabase (defined early for use in other effects)
-  const saveSettingsToSupabase = useCallback(async (newSettings: GoogleCalendarSettings) => {
+  // Load settings from Supabase
+  useEffect(() => {
     if (!user || !supabase) return;
 
-    try {
-      const { data: currentData } = await supabase
-        .from('user_settings')
-        .select('preferences')
-        .eq('user_id', user.id)
-        .single();
-
-      const currentPrefs = currentData?.preferences || {};
-
-      await supabase
-        .from('user_settings')
-        .update({
-          preferences: {
-            ...currentPrefs,
-            googleCalendar: newSettings,
-          },
-          updated_at: new Date().toISOString(),
-        })
-        .eq('user_id', user.id);
-    } catch (error) {
-      console.error('Error saving Google Calendar settings:', error);
-    }
-  }, [user]);
-
-  // Handle OAuth callback - check URL for tokens
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
-    const hash = window.location.hash;
-    const params = new URLSearchParams(window.location.search);
-    
-    // Check for error
-    const error = params.get('gcal_error');
-    if (error) {
-      toast.error(`Google Calendar error: ${error}`);
-      // Clean up URL
-      window.history.replaceState({}, '', window.location.pathname + '?section=integrations');
-      return;
-    }
-    
-    // Check for success with tokens in hash
-    if (params.get('gcal_success') === 'true' && hash.includes('gcal_tokens=')) {
-      try {
-        const tokenStr = decodeURIComponent(hash.split('gcal_tokens=')[1]);
-        const tokens = JSON.parse(tokenStr);
-        
-        if (tokens.accessToken && tokens.refreshToken) {
-          // Save tokens to settings
-          const newSettings: GoogleCalendarSettings = {
-            ...settings,
-            enabled: true,
-            accessToken: tokens.accessToken,
-            refreshToken: tokens.refreshToken,
-            tokenExpiry: tokens.tokenExpiry,
-          };
-          
-          setSettings(newSettings);
-          setIsConnected(true);
-          
-          // Save to Supabase if user is logged in
-          if (user) {
-            saveSettingsToSupabase(newSettings);
-          } else {
-            // For guest mode, store in localStorage
-            localStorage.setItem('gcal_settings', JSON.stringify(newSettings));
-          }
-          
-          toast.success('Connected to Google Calendar!');
-        }
-      } catch (e) {
-        console.error('Error parsing Google Calendar tokens:', e);
-        toast.error('Failed to process Google Calendar connection');
-      }
-      
-      // Clean up URL
-      window.history.replaceState({}, '', window.location.pathname + '?section=integrations');
-    }
-  }, [user, settings, saveSettingsToSupabase]);
-
-  // Load settings from Supabase or localStorage
-  useEffect(() => {
     const loadSettings = async () => {
-      // First check localStorage for guest mode
-      const localSettings = localStorage.getItem('gcal_settings');
-      if (localSettings) {
-        try {
-          const parsed = JSON.parse(localSettings) as GoogleCalendarSettings;
-          setSettings(parsed);
-          setIsConnected(parsed.enabled && !!parsed.accessToken);
-        } catch (e) {
-          console.error('Error parsing local gcal settings:', e);
-        }
-      }
-      
-      // If user is logged in, load from Supabase (overrides local)
-      if (user && supabase) {
-        try {
-          const { data } = await supabase
-            .from('user_settings')
-            .select('preferences')
-            .eq('user_id', user.id)
-            .single();
+      try {
+        const { data } = await supabase
+          .from('user_settings')
+          .select('preferences')
+          .eq('user_id', user.id)
+          .single();
 
-          if (data?.preferences?.googleCalendar) {
-            const gcalSettings = data.preferences.googleCalendar as GoogleCalendarSettings;
-            setSettings(gcalSettings);
-            setIsConnected(gcalSettings.enabled && !!gcalSettings.accessToken);
-            
-            // Sync to localStorage for backup
-            localStorage.setItem('gcal_settings', JSON.stringify(gcalSettings));
-          }
-        } catch (error) {
-          console.error('Error loading Google Calendar settings:', error);
+        if (data?.preferences?.googleCalendar) {
+          const gcalSettings = data.preferences.googleCalendar as GoogleCalendarSettings;
+          setSettings(gcalSettings);
+          setIsConnected(gcalSettings.enabled && !!gcalSettings.accessToken);
         }
+      } catch (error) {
+        console.error('Error loading Google Calendar settings:', error);
       }
     };
 
@@ -191,14 +90,33 @@ export function useGoogleCalendar() {
     return settings.accessToken;
   }, [settings]);
 
-  // Save settings (wrapper that also updates localStorage)
+  // Save settings to Supabase
   const saveSettings = useCallback(async (newSettings: GoogleCalendarSettings) => {
-    // Always save to localStorage for backup/guest mode
-    localStorage.setItem('gcal_settings', JSON.stringify(newSettings));
-    
-    // Save to Supabase if user is logged in
-    await saveSettingsToSupabase(newSettings);
-  }, [saveSettingsToSupabase]);
+    if (!user || !supabase) return;
+
+    try {
+      const { data: currentData } = await supabase
+        .from('user_settings')
+        .select('preferences')
+        .eq('user_id', user.id)
+        .single();
+
+      const currentPrefs = currentData?.preferences || {};
+
+      await supabase
+        .from('user_settings')
+        .update({
+          preferences: {
+            ...currentPrefs,
+            googleCalendar: newSettings,
+          },
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', user.id);
+    } catch (error) {
+      console.error('Error saving Google Calendar settings:', error);
+    }
+  }, [user]);
 
   // Connect to Google Calendar
   const connect = useCallback(async () => {
@@ -276,7 +194,7 @@ export function useGoogleCalendar() {
     }
   }, [getValidAccessToken, settings.defaultCalendarId]);
 
-  // Remove a task from Google Calendar (manual unsync - always removes)
+  // Remove a task from Google Calendar
   const unsyncTask = useCallback(async (task: Task): Promise<boolean> => {
     const accessToken = await getValidAccessToken();
     if (!accessToken || !settings.defaultCalendarId) return false;
@@ -294,37 +212,11 @@ export function useGoogleCalendar() {
     }
   }, [getValidAccessToken, settings.defaultCalendarId]);
 
-  // Called when a task is deleted in AeroTodo - respects deleteFromGcal setting
-  const onTaskDeleted = useCallback(async (task: Task): Promise<boolean> => {
-    // Only delete from GCal if the setting is enabled
-    if (!settings.deleteFromGcal) {
-      return true; // Skip deletion, return success
-    }
-    
-    // Only proceed if task was synced to GCal
-    if (!task.googleCalendarEventId) {
-      return true;
-    }
-
-    const accessToken = await getValidAccessToken();
-    if (!accessToken || !settings.defaultCalendarId) return true;
-
-    try {
-      await removeTaskFromGoogleCalendar(task, accessToken, settings.defaultCalendarId);
-      return true;
-    } catch (error) {
-      console.error('Error removing deleted task from GCal:', error);
-      // Don't show error toast - task deletion should still proceed
-      return true;
-    }
-  }, [getValidAccessToken, settings.defaultCalendarId, settings.deleteFromGcal]);
-
   // Full sync
   const performFullSync = useCallback(async (
     tasks: Task[],
     onTaskUpdate: (taskId: string, updates: Partial<Task>) => void,
-    onTaskCreate: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Task,
-    ensureProjectExists?: (profileId: string) => Promise<void>
+    onTaskCreate: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Task
   ): Promise<GoogleCalendarSyncResult | null> => {
     const accessToken = await getValidAccessToken();
     if (!accessToken || !settings.defaultCalendarId) {
@@ -334,18 +226,6 @@ export function useGoogleCalendar() {
 
     setIsSyncing(true);
     try {
-      console.log('[useGoogleCalendar] Starting full sync with settings:', {
-        profileId: settings.profileId,
-        twoWaySync: settings.twoWaySync,
-        defaultCalendarId: settings.defaultCalendarId
-      });
-      
-      // Ensure the profile exists as a project in Supabase before syncing
-      // This prevents FK constraint failures when assigning projectId to tasks
-      if (settings.profileId && ensureProjectExists) {
-        await ensureProjectExists(settings.profileId);
-      }
-      
       const result = await fullSync(
         tasks,
         accessToken,
@@ -381,85 +261,6 @@ export function useGoogleCalendar() {
     }
   }, [isConnected, settings.accessToken, loadCalendars]);
 
-  // Auto-sync: Set up polling for background sync (every 5 minutes when two-way sync is enabled)
-  const autoSyncRef = useRef<NodeJS.Timeout | null>(null);
-  const lastAutoSyncRef = useRef<number>(0);
-
-  const performBackgroundSync = useCallback(async (
-    tasksGetter: () => Task[],
-    onTaskUpdate: (taskId: string, updates: Partial<Task>) => void,
-    onTaskCreate: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Task
-  ) => {
-    // Debounce - don't sync more than once per minute
-    const now = Date.now();
-    if (now - lastAutoSyncRef.current < 60000) {
-      return;
-    }
-    lastAutoSyncRef.current = now;
-
-    const accessToken = await getValidAccessToken();
-    if (!accessToken || !settings.defaultCalendarId || !settings.twoWaySync) {
-      return;
-    }
-
-    try {
-      await fullSync(
-        tasksGetter(),
-        accessToken,
-        settings.defaultCalendarId,
-        settings,
-        onTaskUpdate,
-        onTaskCreate
-      );
-      
-      // Update last sync time silently
-      await saveSettings({ ...settings, lastSyncAt: new Date().toISOString() });
-    } catch (error) {
-      console.error('Background sync error:', error);
-    }
-  }, [getValidAccessToken, settings, saveSettings]);
-
-  // Start/stop auto-sync based on settings
-  const startAutoSync = useCallback((
-    tasksGetter: () => Task[],
-    onTaskUpdate: (taskId: string, updates: Partial<Task>) => void,
-    onTaskCreate: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Task,
-    intervalMs: number = 5 * 60 * 1000 // 5 minutes default
-  ) => {
-    // Clear existing interval
-    if (autoSyncRef.current) {
-      clearInterval(autoSyncRef.current);
-    }
-
-    if (!isConnected || !settings.twoWaySync) {
-      return;
-    }
-
-    // Initial sync on start
-    performBackgroundSync(tasksGetter, onTaskUpdate, onTaskCreate);
-
-    // Set up interval
-    autoSyncRef.current = setInterval(() => {
-      performBackgroundSync(tasksGetter, onTaskUpdate, onTaskCreate);
-    }, intervalMs);
-  }, [isConnected, settings.twoWaySync, performBackgroundSync]);
-
-  const stopAutoSync = useCallback(() => {
-    if (autoSyncRef.current) {
-      clearInterval(autoSyncRef.current);
-      autoSyncRef.current = null;
-    }
-  }, []);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (autoSyncRef.current) {
-        clearInterval(autoSyncRef.current);
-      }
-    };
-  }, []);
-
   return {
     settings,
     calendars,
@@ -470,13 +271,10 @@ export function useGoogleCalendar() {
     disconnect,
     loadCalendars,
     updateSettings,
-    onTaskDeleted,
     syncTask,
     unsyncTask,
     performFullSync,
     getValidAccessToken,
-    startAutoSync,
-    stopAutoSync,
   };
 }
 

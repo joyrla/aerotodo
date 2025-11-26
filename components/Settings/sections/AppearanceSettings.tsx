@@ -3,14 +3,14 @@
 import { useState, useEffect } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { themes, applyTheme, getCurrentTheme, saveTheme, ThemeName, applyRadius, getCurrentRadius, saveRadius, RadiusOption } from '@/lib/utils/themes';
+import { themes, applyTheme, getCurrentTheme, saveTheme, ThemeName, applyRadius, getCurrentRadius, saveRadius } from '@/lib/utils/themes';
 import { useSettings } from '@/lib/contexts/SettingsContext';
 import { SettingsSection } from '../SettingsSection';
 
 export function AppearanceSettings() {
   const { preferences, updatePreferences } = useSettings();
   const [selectedTheme, setSelectedTheme] = useState<ThemeName>('default');
-  const [selectedRadius, setSelectedRadius] = useState<RadiusOption>('squared');
+  const [selectedRadius, setSelectedRadius] = useState('0.25');
 
   useEffect(() => {
     setSelectedTheme(getCurrentTheme());
@@ -25,7 +25,7 @@ export function AppearanceSettings() {
     applyTheme(themeName, isDark ? 'dark' : 'light');
   };
 
-  const handleRadiusChange = (value: RadiusOption) => {
+  const handleRadiusChange = (value: string) => {
     setSelectedRadius(value);
     saveRadius(value);
     applyRadius(value);
@@ -70,18 +70,17 @@ export function AppearanceSettings() {
           <Label htmlFor="radius-select" className="text-sm font-mono">
             Theme Shape
           </Label>
-          <Select value={selectedRadius} onValueChange={(v) => handleRadiusChange(v as RadiusOption)}>
+          <Select value={selectedRadius} onValueChange={handleRadiusChange}>
             <SelectTrigger id="radius-select" className="font-mono">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="squared" className="font-mono">Squared</SelectItem>
-              <SelectItem value="squircle" className="font-mono">Squircle</SelectItem>
-              <SelectItem value="pill" className="font-mono">Pill</SelectItem>
+              <SelectItem value="0.25" className="font-mono">Squared</SelectItem>
+              <SelectItem value="0.5" className="font-mono">Rounded</SelectItem>
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground font-mono">
-            Choose squared, squircle, or pill-shaped UI elements.
+            Choose between squared or rounded UI elements.
           </p>
         </div>
 
