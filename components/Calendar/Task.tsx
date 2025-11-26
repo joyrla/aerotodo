@@ -415,7 +415,7 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
                           setShowColorPicker(true);
                         }}
                         className={cn(
-                          'w-6 h-6 flex items-center justify-center rounded transition-all duration-200',
+                          'w-6 h-6 flex items-center justify-center rounded-md transition-all duration-200',
                           'text-muted-foreground hover:text-foreground',
                           'hover:bg-accent hover:scale-110',
                           hasColor && 'text-foreground/80',

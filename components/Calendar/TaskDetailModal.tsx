@@ -477,19 +477,17 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
                   <button
                     className={cn(
                       "w-7 h-7 rounded-md flex items-center justify-center transition-colors shrink-0",
-                      showMobileColorPicker && "bg-accent"
+                      showMobileColorPicker && "bg-accent",
+                      task.color === 'default' && "bg-muted/40"
                     )}
                     style={{
-                      backgroundColor: task.color !== 'default'
-                        ? hexToRgba(getTaskColor(task.color), 0.15)
-                        : undefined
+                      color: task.color !== 'default' ? getTaskColor(task.color) : undefined
                     }}
                   >
-                    {task.color !== 'default' ? (
-                      <div className="w-3.5 h-3.5 rounded-md" style={{ backgroundColor: hexToRgba(getTaskColor(task.color), 0.5) }} />
-                    ) : (
-                      <Palette className="w-3 h-3 text-muted-foreground" />
-                    )}
+                    <Palette className={cn(
+                      "w-3.5 h-3.5",
+                      task.color === 'default' ? "text-muted-foreground" : "text-current"
+                    )} />
                   </button>
                 </PopoverTrigger>
                 <PopoverContent 
@@ -997,21 +995,18 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
                   className={cn(
                     "h-8 w-8 rounded-md flex items-center justify-center transition-all border",
                     task.color !== 'default'
-                      ? "border-transparent"
+                      ? "border-transparent hover:bg-accent"
                       : "bg-muted/40 border-transparent hover:bg-muted/60",
                     showDesktopColorPicker && "ring-2 ring-primary/20"
                   )}
                   style={{
-                    backgroundColor: task.color !== 'default'
-                      ? hexToRgba(getTaskColor(task.color), 0.15)
-                      : undefined
+                    color: task.color !== 'default' ? getTaskColor(task.color) : undefined
                   }}
                 >
-                  {task.color !== 'default' ? (
-                    <div className="w-4 h-4 rounded-md" style={{ backgroundColor: hexToRgba(getTaskColor(task.color), 0.5) }} />
-                  ) : (
-                    <Palette className="w-3.5 h-3.5 text-muted-foreground" />
-                  )}
+                  <Palette className={cn(
+                    "w-3.5 h-3.5",
+                    task.color === 'default' ? "text-muted-foreground" : "text-current"
+                  )} />
                 </button>
               </PopoverTrigger>
               <PopoverContent 
