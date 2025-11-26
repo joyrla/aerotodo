@@ -139,15 +139,15 @@ export function ModulesSettings() {
                   return (
                     <Draggable key={config.id} draggableId={config.id} index={index}>
                       {(provided, snapshot) => (
-                        <div
-                          ref={provided.innerRef}
-                          {...provided.draggableProps}
-                          className={cn(
-                            'flex items-center gap-3 p-3 border border-border rounded-lg bg-background',
-                            snapshot.isDragging && 'shadow-lg opacity-90',
-                            !config.enabled && 'opacity-60'
-                          )}
-                        >
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            className={cn(
+                              'flex items-center gap-3 p-3 border border-border rounded-lg bg-background',
+                              snapshot.isDragging && 'shadow-lg opacity-90',
+                              !config.enabled && 'opacity-60'
+                            )}
+                          >
                           <div
                             {...provided.dragHandleProps}
                             className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground"

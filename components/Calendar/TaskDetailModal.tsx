@@ -74,6 +74,13 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
     };
   }, []);
 
+  const handleCalendarDateChange = (date: Date | null) => {
+    if (date) {
+      updateTask(task.id, { date: dateHelpers.toISOString(date) });
+    } else {
+      updateTask(task.id, { date: null });
+    }
+  };
 
   // Refs for inputs to capture values on close
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -322,120 +329,17 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
                   </button>
                 </PopoverTrigger>
                 <PopoverContent 
-                  className="w-[280px] p-0" 
+                  className="p-0" 
                   align="start" 
                   side="bottom" 
                   sideOffset={4}
                 >
-                  {/* Quick Date Shortcuts - 4 columns */}
-                  <div className="border-b border-border/50 p-2">
-                    <div className="grid grid-cols-4 gap-1">
-                      <button
-                        onClick={() => {
-                          const today = new Date();
-                          updateTask(task.id, { date: dateHelpers.toISOString(today) });
-                          setShowMobileDatePicker(false);
-                        }}
-                        className={cn(
-                          "py-1.5 text-[10px] font-mono rounded-md transition-all active:scale-95",
-                          task.date && dateHelpers.isToday(new Date(task.date))
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted/50 text-foreground hover:bg-muted"
-                        )}
-                      >
-                        Today
-                      </button>
-                      <button
-                        onClick={() => {
-                          const tomorrow = new Date();
-                          tomorrow.setDate(tomorrow.getDate() + 1);
-                          updateTask(task.id, { date: dateHelpers.toISOString(tomorrow) });
-                          setShowMobileDatePicker(false);
-                        }}
-                        className="py-1.5 text-[10px] font-mono rounded-md bg-muted/50 text-foreground hover:bg-muted transition-all active:scale-95"
-                      >
-                        Tomorrow
-                      </button>
-                      <button
-                        onClick={() => {
-                          // Get next Saturday
-                          const today = new Date();
-                          const dayOfWeek = today.getDay();
-                          const daysUntilSaturday = dayOfWeek === 6 ? 7 : (6 - dayOfWeek);
-                          const weekend = new Date(today);
-                          weekend.setDate(today.getDate() + daysUntilSaturday);
-                          updateTask(task.id, { date: dateHelpers.toISOString(weekend) });
-                          setShowMobileDatePicker(false);
-                        }}
-                        className="py-1.5 text-[10px] font-mono rounded-md bg-muted/50 text-foreground hover:bg-muted transition-all active:scale-95"
-                      >
-                        Weekend
-                      </button>
-                      <button
-                        onClick={() => {
-                          const nextWeek = new Date();
-                          nextWeek.setDate(nextWeek.getDate() + 7);
-                          updateTask(task.id, { date: dateHelpers.toISOString(nextWeek) });
-                          setShowMobileDatePicker(false);
-                        }}
-                        className="py-1.5 text-[10px] font-mono rounded-md bg-muted/50 text-foreground hover:bg-muted transition-all active:scale-95"
-                      >
-                        +1 Week
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Compact Calendar */}
-                  <div className="p-1">
-                    <Calendar
-                      mode="single"
-                      selected={task.date ? new Date(task.date) : undefined}
-                      onSelect={(date) => {
-                        updateTask(task.id, { date: date ? dateHelpers.toISOString(date) : null });
-                        setShowMobileDatePicker(false);
-                      }}
-                      modifiersClassNames={{
-                        selected: "!bg-muted !text-muted-foreground font-medium",
-                        today: "bg-primary text-primary-foreground font-semibold",
-                      }}
-                      classNames={{
-                        months: "flex flex-col relative",
-                        month: "space-y-2",
-                        month_caption: "flex items-center justify-center h-8 px-8",
-                        caption_label: "text-xs font-medium font-mono",
-                        nav: "flex items-center w-full absolute top-0 inset-x-0 justify-between px-1 h-8",
-                        button_previous: "h-7 w-7 bg-transparent p-0 opacity-60 hover:opacity-100 transition-colors rounded-md hover:bg-muted inline-flex items-center justify-center",
-                        button_next: "h-7 w-7 bg-transparent p-0 opacity-60 hover:opacity-100 transition-colors rounded-md hover:bg-muted inline-flex items-center justify-center",
-                        table: "w-full border-collapse",
-                        weekdays: "flex",
-                        weekday: "text-muted-foreground rounded-md w-9 font-normal text-[10px] flex-1 text-center",
-                        week: "flex w-full mt-1",
-                        day: "relative p-0 text-center text-xs focus-within:relative focus-within:z-20 flex-1",
-                        day_button: cn(
-                          "h-9 w-9 p-0 font-normal font-mono rounded-md inline-flex items-center justify-center transition-colors",
-                          "hover:bg-accent hover:text-accent-foreground"
-                        ),
-                        outside: "text-muted-foreground opacity-40",
-                        disabled: "text-muted-foreground opacity-40",
-                        hidden: "invisible",
-                      }}
-                    />
-                  </div>
-
-                  {/* Move to Inbox / Clear Date */}
-                  {task.date && (
-                    <div className="px-2 pb-2">
-                      <button
-                        onClick={() => {
-                          updateTask(task.id, { date: null });
-                          setShowMobileDatePicker(false);
-                        }}
-                        className="w-full py-1.5 text-[10px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-md transition-all active:scale-95 border border-border/50"
-                      >
-                        Move to Inbox
-                      </button>
-                    </div>
-                  )}
+                  <TaskDatePickerContent
+                    variant="mobile"
+                    selectedDate={task.date ? new Date(task.date) : null}
+                    onSelectDate={handleCalendarDateChange}
+                    onClose={() => setShowMobileDatePicker(false)}
+                  />
                 </PopoverContent>
               </Popover>
 
@@ -443,7 +347,7 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
               <Popover>
                 <PopoverTrigger asChild>
                   <button className={cn(
-                    "inline-flex items-center gap-1 h-7 px-2 rounded-md text-[11px] font-mono transition-colors whitespace-nowrap",
+                    "inline-flex items-center gap-1.5 h-7 px-2.5 rounded-md text-[11px] font-mono transition-colors whitespace-nowrap",
                     task.timeSlot ? "bg-orange-500/10 text-orange-600" : "bg-muted/30 text-muted-foreground"
                   )}>
                     <Clock className="w-3 h-3 shrink-0" />
@@ -454,16 +358,15 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
                         const ampm = h >= 12 ? 'PM' : 'AM';
                         return `${hour12}:${String(m).padStart(2, '0')} ${ampm}`;
                       };
-                      return `${formatTime(task.timeSlot.start)} - ${formatTime(task.timeSlot.end)}`;
+                      return `${formatTime(task.timeSlot.start)} – ${formatTime(task.timeSlot.end)}`;
                     })() : 'Time'}</span>
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[240px] p-3" align="start" side="bottom" sideOffset={4}>
-                  <div className="space-y-3">
-                    {/* Time Range */}
-                    <div className="flex items-center gap-3">
-                      {/* Start */}
-                      <div className="relative flex-1 min-w-[85px]">
+                <PopoverContent className="w-auto p-2.5" align="start" side="bottom" sideOffset={4}>
+                  <div className="space-y-2">
+                    {/* Unified time row */}
+                    <div className="flex items-center gap-1.5 p-1 bg-muted/30 rounded-lg">
+                      <div className="relative w-[72px] shrink-0">
                         <input
                           type="time"
                           value={task.timeSlot?.start || '09:00'}
@@ -475,7 +378,7 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
                           }}
                           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                         />
-                        <div className="h-9 px-3 flex items-center justify-center text-sm font-mono bg-orange-500/10 text-orange-600 rounded-lg whitespace-nowrap">
+                        <div className="h-7 px-2 flex items-center justify-center text-[11px] font-mono text-orange-600 bg-orange-500/15 rounded-md font-medium whitespace-nowrap">
                           {(() => {
                             const time = task.timeSlot?.start || '09:00';
                             const [h, m] = time.split(':').map(Number);
@@ -486,10 +389,9 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
                         </div>
                       </div>
                       
-                      <span className="text-muted-foreground/40 text-sm font-mono">–</span>
+                      <span className="text-[10px] text-muted-foreground/50 font-mono shrink-0">to</span>
                       
-                      {/* End */}
-                      <div className="relative flex-1 min-w-[85px]">
+                      <div className="relative w-[72px] shrink-0">
                         <input
                           type="time"
                           value={task.timeSlot?.end || '10:00'}
@@ -501,7 +403,7 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
                           }}
                           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                         />
-                        <div className="h-9 px-3 flex items-center justify-center text-sm font-mono bg-muted/40 text-foreground rounded-lg whitespace-nowrap">
+                        <div className="h-7 px-2 flex items-center justify-center text-[11px] font-mono text-foreground bg-background rounded-md border border-border/40 whitespace-nowrap">
                           {(() => {
                             const time = task.timeSlot?.end || '10:00';
                             const [h, m] = time.split(':').map(Number);
@@ -511,109 +413,128 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
                           })()}
                         </div>
                       </div>
-                    </div>
 
-                    {/* Duration shortcuts */}
-                    <div className="flex gap-1.5">
-                      {[{ l: '15m', m: 15 }, { l: '30m', m: 30 }, { l: '1h', m: 60 }, { l: '2h', m: 120 }].map((d) => (
-                        <button
-                          key={d.l}
-                          onClick={() => {
-                            const start = task.timeSlot?.start || '09:00';
-                            const [h, m] = start.split(':').map(Number);
-                            const end = new Date(2000, 0, 1, h, m + d.m);
-                            handleTimeSlotChange({ start, end: `${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}` });
-                          }}
-                          className="flex-1 py-1.5 text-xs font-mono rounded-md bg-muted/30 text-muted-foreground hover:bg-orange-500/10 hover:text-orange-600 transition-colors"
-                        >
-                          {d.l}
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Remove button */}
-                    {task.timeSlot && (
                       <button
-                        onClick={() => handleTimeSlotChange(null)}
-                        className="w-full py-1 text-[10px] font-mono text-muted-foreground hover:text-destructive transition-colors"
+                        onClick={() => task.timeSlot && handleTimeSlotChange(null)}
+                        className={cn(
+                          "h-7 w-7 flex items-center justify-center rounded-md transition-colors shrink-0",
+                          task.timeSlot 
+                            ? "text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10" 
+                            : "text-muted-foreground/20 cursor-default"
+                        )}
+                        disabled={!task.timeSlot}
                       >
-                        Clear
+                        <X className="w-3 h-3" />
                       </button>
-                    )}
+                    </div>
+
+                    {/* Duration chips - more compact */}
+                    <div className="flex gap-1">
+                      {[{ l: '15m', m: 15 }, { l: '30m', m: 30 }, { l: '1h', m: 60 }, { l: '2h', m: 120 }].map((d) => {
+                        // Check if this duration matches current selection
+                        const start = task.timeSlot?.start || '09:00';
+                        const end = task.timeSlot?.end || '10:00';
+                        const [sh, sm] = start.split(':').map(Number);
+                        const [eh, em] = end.split(':').map(Number);
+                        const currentDuration = (eh * 60 + em) - (sh * 60 + sm);
+                        const isActive = task.timeSlot && currentDuration === d.m;
+                        
+                        return (
+                          <button
+                            key={d.l}
+                            onClick={() => {
+                              const [h, m] = start.split(':').map(Number);
+                              const endDate = new Date(2000, 0, 1, h, m + d.m);
+                              handleTimeSlotChange({ start, end: `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}` });
+                            }}
+                            className={cn(
+                              "flex-1 py-1 text-[10px] font-mono rounded-md transition-colors",
+                              isActive 
+                                ? "bg-orange-500/15 text-orange-600 font-medium" 
+                                : "bg-muted/40 text-muted-foreground hover:bg-orange-500/10 hover:text-orange-600"
+                            )}
+                          >
+                            {d.l}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </PopoverContent>
               </Popover>
 
-              {/* Color */}
-              <Popover open={showColorPicker} onOpenChange={setShowColorPicker}>
-                <PopoverTrigger asChild>
-                  <button
-                    onClick={() => setShowColorPicker(!showColorPicker)}
-                    className={cn(
-                      "w-7 h-7 rounded-md flex items-center justify-center transition-colors shrink-0",
-                      task.color === 'default' && "bg-muted/30"
-                    )}
-                    style={{
-                      backgroundColor: task.color !== 'default'
-                        ? colorOptions.find(c => c.color === task.color)?.pastelValue
-                        : undefined
-                    }}
-                  >
-                    <Palette
-                      className="w-3 h-3"
-                      style={{ color: task.color !== 'default'
-                        ? colorOptions.find(c => c.color === task.color)?.value
-                        : 'hsl(var(--muted-foreground))' }}
-                    />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent
-                  className="w-auto p-1.5"
-                  align="start"
-                  side="bottom"
-                  sideOffset={4}
+              {/* Color - Inline expanding bar */}
+              <div ref={colorPickerRef} className="relative flex items-center">
+                <button
+                  onClick={() => setShowColorPicker(!showColorPicker)}
+                  className={cn(
+                    "w-7 h-7 rounded-md flex items-center justify-center transition-colors shrink-0 z-10",
+                    task.color === 'default' && "bg-muted/30"
+                  )}
+                  style={{
+                    backgroundColor: task.color !== 'default'
+                      ? colorOptions.find(c => c.color === task.color)?.pastelValue
+                      : undefined
+                  }}
                 >
-                  <div className="flex flex-col gap-1">
-                    {colorOptions.map(({ color, pastelValue, value, label }) => {
-                      const isSelected = task.color === color;
-                      return (
-                        <button
-                          key={color}
-                          onClick={() => {
-                            updateTask(task.id, { color });
-                            setShowColorPicker(false);
-                          }}
-                          className={cn(
-                            "w-7 h-7 rounded-full transition-all duration-150 flex items-center justify-center",
-                            "hover:opacity-80",
-                            isSelected && "ring-2 ring-offset-1 ring-offset-background"
-                          )}
-                          style={{ 
-                            backgroundColor: pastelValue,
-                            ...(isSelected && { ringColor: value })
-                          }}
-                          title={label}
-                        >
-                          {isSelected && (
-                            <Check className="w-3 h-3" style={{ color: value }} strokeWidth={3} />
-                          )}
-                        </button>
-                      );
-                    })}
-                    {/* No color option - just X on white */}
-                    <button
-                      onClick={() => {
-                        updateTask(task.id, { color: 'default' });
-                        setShowColorPicker(false);
-                      }}
-                      className="w-7 h-7 flex items-center justify-center transition-opacity hover:opacity-60"
-                      title="No highlight"
-                    >
-                      <X className="w-3.5 h-3.5 text-muted-foreground" />
-                    </button>
-                  </div>
-                </PopoverContent>
-              </Popover>
+                  <Palette
+                    className="w-3 h-3"
+                    style={{ color: task.color !== 'default'
+                      ? colorOptions.find(c => c.color === task.color)?.value
+                      : 'hsl(var(--muted-foreground))' }}
+                  />
+                </button>
+                
+                {/* Expanding color options */}
+                <div 
+                  className={cn(
+                    "flex items-center gap-1 overflow-hidden transition-all duration-150 ease-out origin-left",
+                    showColorPicker ? "max-w-[200px] opacity-100 ml-1" : "max-w-0 opacity-0 ml-0"
+                  )}
+                >
+                  {colorOptions.map(({ color, pastelValue, value, label }, index) => {
+                    const isSelected = task.color === color;
+                    return (
+                      <button
+                        key={color}
+                        onClick={() => {
+                          updateTask(task.id, { color });
+                          setShowColorPicker(false);
+                        }}
+                        className={cn(
+                          "w-6 h-6 rounded-full transition-all duration-100 flex items-center justify-center shrink-0",
+                          "hover:scale-110 active:scale-90"
+                        )}
+                        style={{ 
+                          backgroundColor: pastelValue,
+                          transitionDelay: showColorPicker ? `${index * 20}ms` : '0ms'
+                        }}
+                        title={label}
+                      >
+                        {isSelected && (
+                          <Check className="w-2.5 h-2.5" style={{ color: value }} strokeWidth={3} />
+                        )}
+                      </button>
+                    );
+                  })}
+                  {/* No color option */}
+                  <button
+                    onClick={() => {
+                      updateTask(task.id, { color: 'default' });
+                      setShowColorPicker(false);
+                    }}
+                    className={cn(
+                      "w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-all duration-100",
+                      "hover:scale-110 active:scale-90",
+                      task.color === 'default' && "bg-muted/50"
+                    )}
+                    style={{ transitionDelay: showColorPicker ? `${colorOptions.length * 20}ms` : '0ms' }}
+                    title="No highlight"
+                  >
+                    <X className="w-2.5 h-2.5 text-muted-foreground" />
+                  </button>
+                </div>
+              </div>
 
               {/* Repeat */}
               <Popover>
@@ -664,8 +585,21 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
               </div>
               
               <div className="space-y-1">
-                {/* Existing Subtasks */}
-                {task.subtasks?.map(subtask => (
+                {/* Existing Subtasks - sorted with completed at bottom if setting enabled */}
+                {(() => {
+                  const moveCompletedToBottom = typeof window !== 'undefined' 
+                    ? storage.get<boolean>('aerotodo_move_completed_to_bottom', false)
+                    : false;
+                  
+                  const sortedSubtasks = [...(task.subtasks || [])].sort((a, b) => {
+                    if (moveCompletedToBottom && a.completed !== b.completed) {
+                      return a.completed ? 1 : -1;
+                    }
+                    return 0;
+                  });
+                  
+                  return sortedSubtasks;
+                })().map(subtask => (
                   <div 
                     key={subtask.id} 
                     className="flex items-center gap-3 py-2 px-3 -mx-3 rounded-lg active:bg-muted/50 transition-colors"
@@ -751,33 +685,15 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
                     <ChevronDown className="w-3 h-3 opacity-50" />
                   </button>
                 </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                    selected={task.date ? new Date(task.date) : undefined}
-                    onSelect={(date) => {
-                      if (date) {
-                         updateTask(task.id, { date: dateHelpers.toISOString(date) });
-                         setShowDatePicker(false);
-                      } else {
-                         updateTask(task.id, { date: null });
-                         setShowDatePicker(false);
-                      }
-                    }}
-                initialFocus
+            <PopoverContent className="p-0 w-auto" align="start" sideOffset={6}>
+              <TaskDatePickerContent
+                variant="desktop"
+                selectedDate={task.date ? new Date(task.date) : null}
+                onSelectDate={handleCalendarDateChange}
+                onClose={() => setShowDatePicker(false)}
               />
-                </PopoverContent>
+            </PopoverContent>
              </Popover>
-             
-             {/* Move to Inbox Quick Action if has date */}
-             {task.date && (
-                <button
-                 onClick={() => updateTask(task.id, { date: null })}
-                 className="text-[10px] font-mono text-muted-foreground/50 hover:text-primary transition-colors"
-                >
-                 Move to Inbox
-                </button>
-             )}
           </div>
 
           <div className="flex items-center gap-1">
@@ -1071,5 +987,115 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
 
         </DialogContent>
       </Dialog>
+  );
+}
+
+type DatePickerVariant = "mobile" | "desktop";
+
+interface TaskDatePickerContentProps {
+  variant: DatePickerVariant;
+  selectedDate: Date | null;
+  onSelectDate: (date: Date | null) => void;
+  onClose: () => void;
+}
+
+const DATE_PICKER_CALENDAR_CLASSNAMES = {
+  months: "flex flex-col relative",
+  month: "space-y-2",
+  month_caption: "flex items-center justify-center h-8 px-8",
+  caption_label: "text-xs font-medium font-mono",
+  nav: "flex items-center w-full absolute top-0 inset-x-0 justify-between px-1 h-8",
+  button_previous:
+    "h-7 w-7 bg-transparent p-0 opacity-60 hover:opacity-100 transition-colors rounded-md hover:bg-muted inline-flex items-center justify-center",
+  button_next:
+    "h-7 w-7 bg-transparent p-0 opacity-60 hover:opacity-100 transition-colors rounded-md hover:bg-muted inline-flex items-center justify-center",
+  table: "w-full border-collapse",
+  weekdays: "flex",
+  weekday: "text-muted-foreground rounded-md w-9 font-normal text-[10px] flex-1 text-center",
+  week: "flex w-full mt-1",
+  day: "relative p-0 text-center text-xs focus-within:relative focus-within:z-20 flex-1",
+  day_button: cn(
+    "h-9 w-9 p-0 font-normal font-mono rounded-md inline-flex items-center justify-center transition-colors",
+    "hover:bg-accent hover:text-accent-foreground"
+  ),
+  outside: "text-muted-foreground opacity-40",
+  disabled: "text-muted-foreground opacity-40",
+  hidden: "invisible",
+};
+
+const DATE_PICKER_MODIFIER_CLASSNAMES = {
+  selected: "!bg-muted !text-muted-foreground font-medium",
+  today: "!bg-primary text-primary-foreground font-medium",
+};
+
+function TaskDatePickerContent({
+  variant,
+  selectedDate,
+  onSelectDate,
+  onClose,
+}: TaskDatePickerContentProps) {
+  const isDesktop = variant === "desktop";
+  const widthClass = "w-[280px]";
+  const textSizeClass = isDesktop ? "text-xs" : "text-[10px]";
+
+  const handleSelect = (date: Date | null) => {
+    onSelectDate(date);
+    onClose();
+  };
+
+  const isSameDay = (base: Date | null, comparison: Date) => {
+    if (!base) return false;
+    return (
+      base.getFullYear() === comparison.getFullYear() &&
+      base.getMonth() === comparison.getMonth() &&
+      base.getDate() === comparison.getDate()
+    );
+  };
+
+  const quickActions: Array<{
+    label: string;
+    getDate: () => Date;
+  }> = [
+    { label: "Today", getDate: () => new Date() },
+    {
+      label: "Tomorrow",
+      getDate: () => {
+        const d = new Date();
+        d.setDate(d.getDate() + 1);
+        return d;
+      },
+    },
+    {
+      label: "Weekend",
+      getDate: () => {
+        const today = new Date();
+        const dayOfWeek = today.getDay();
+        const daysUntilSaturday = dayOfWeek === 6 ? 7 : 6 - dayOfWeek;
+        const weekend = new Date(today);
+        weekend.setDate(today.getDate() + daysUntilSaturday);
+        return weekend;
+      },
+    },
+    {
+      label: "+1 Week",
+      getDate: () => {
+        const nextWeek = new Date();
+        nextWeek.setDate(nextWeek.getDate() + 7);
+        return nextWeek;
+      },
+    },
+  ];
+
+  return (
+    <div className={cn("text-left", widthClass)}>
+      <Calendar
+        mode="single"
+        selected={selectedDate ?? undefined}
+        onSelect={(date) => handleSelect(date ?? null)}
+        classNames={DATE_PICKER_CALENDAR_CLASSNAMES}
+        modifiersClassNames={DATE_PICKER_MODIFIER_CLASSNAMES}
+        initialFocus={isDesktop}
+      />
+    </div>
   );
 }

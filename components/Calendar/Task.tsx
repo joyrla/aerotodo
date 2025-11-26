@@ -280,10 +280,10 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
         </div>
 
         {/* Task Card */}
-        <div
-          {...dragHandleProps}
-          data-narrow-drag={isDragging && narrowOnDrag ? 'true' : undefined}
-          className={cn(
+      <div
+        {...dragHandleProps}
+        data-narrow-drag={isDragging && narrowOnDrag ? 'true' : undefined}
+        className={cn(
              'group/task relative cursor-pointer min-h-[44px] md:min-h-[36px] select-none',
              'py-2.5 md:py-2 px-3 rounded-lg',
              'bg-card/50 backdrop-blur-sm',
@@ -296,7 +296,7 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
                : '',
              displayCompleted && !isDragging && 'opacity-50',
              isDragging && narrowOnDrag && 'task-narrow-drag'
-          )}
+        )}
            style={{
              ...(isDragging && narrowOnDrag ? { width: '160px', maxWidth: '160px', minWidth: '160px' } : {}),
              transform: `translateX(${translateX}px)`,
@@ -306,9 +306,9 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
                  ? 'transform 150ms ease-out' 
                  : 'transform 250ms cubic-bezier(0.25, 0.1, 0.25, 1)',
            }}
-          onClick={handleEdit}
-          onDoubleClick={handleDoubleClick}
-        >
+        onClick={handleEdit}
+        onDoubleClick={handleDoubleClick}
+      >
          {/* Color Highlight - Full background filling the card */}
          {task.color !== 'default' && (
            <div

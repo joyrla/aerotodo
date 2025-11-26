@@ -20,9 +20,9 @@ export const taskHelpers = {
   },
 
   updateTask: (task: Task, updates: Partial<Task>): Task => ({
-    ...task,
-    ...updates,
-    updatedAt: new Date().toISOString(),
+      ...task,
+      ...updates,
+      updatedAt: new Date().toISOString(),
   }),
 
   sortTasksByCreation: (tasks: Task[]): Task[] => 
