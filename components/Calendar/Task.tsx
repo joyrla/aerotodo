@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { TASK_COLORS, getTaskColor, hexToRgba } from '@/components/ui/color-picker';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
-// Premium magnetic color button with smooth spring physics
+// Magnetic color button with Apple-style cursor attraction
 function MagneticColorButton({
   color,
   colorValue,
@@ -27,66 +27,7 @@ function MagneticColorButton({
   onClick: (e: React.MouseEvent) => void;
 }) {
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const animationRef = useRef<number | null>(null);
-  const targetRef = useRef({ x: 0, y: 0, scale: 1 });
-  const currentRef = useRef({ x: 0, y: 0, scale: 1 });
-  const velocityRef = useRef({ x: 0, y: 0, scale: 0 });
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
-  const [isHovered, setIsHovered] = useState(false);
-
-  // Spring physics animation loop
-  useEffect(() => {
-    const springStrength = 0.15;
-    const damping = 0.75;
-    
-    const animate = () => {
-      const target = targetRef.current;
-      const current = currentRef.current;
-      const velocity = velocityRef.current;
-      
-      const forceX = (target.x - current.x) * springStrength;
-      const forceY = (target.y - current.y) * springStrength;
-      const forceScale = (target.scale - current.scale) * springStrength;
-      
-      velocity.x += forceX;
-      velocity.y += forceY;
-      velocity.scale += forceScale;
-      
-      velocity.x *= damping;
-      velocity.y *= damping;
-      velocity.scale *= damping;
-      
-      current.x += velocity.x;
-      current.y += velocity.y;
-      current.scale += velocity.scale;
-      
-      const isSettled = 
-        Math.abs(velocity.x) < 0.001 && 
-        Math.abs(velocity.y) < 0.001 && 
-        Math.abs(velocity.scale) < 0.001 &&
-        Math.abs(target.x - current.x) < 0.01 &&
-        Math.abs(target.y - current.y) < 0.01 &&
-        Math.abs(target.scale - current.scale) < 0.001;
-      
-      setTransform({ x: current.x, y: current.y, scale: current.scale });
-      
-      if (!isSettled) {
-        animationRef.current = requestAnimationFrame(animate);
-      } else {
-        animationRef.current = null;
-      }
-    };
-    
-    if (animationRef.current === null) {
-      animationRef.current = requestAnimationFrame(animate);
-    }
-    
-    return () => {
-      if (animationRef.current !== null) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
-  }, []);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!buttonRef.current) return;
@@ -98,42 +39,19 @@ function MagneticColorButton({
     const distanceX = e.clientX - centerX;
     const distanceY = e.clientY - centerY;
     
-    const magnetStrength = 0.4;
-    const maxPull = 5;
+    // Magnetic pull strength
+    const magnetStrength = 0.35;
+    const maxPull = 4;
     
     const pullX = Math.max(-maxPull, Math.min(maxPull, distanceX * magnetStrength));
     const pullY = Math.max(-maxPull, Math.min(maxPull, distanceY * magnetStrength));
     
-    targetRef.current = { x: pullX, y: pullY, scale: 1.18 };
-    setIsHovered(true);
-    
-    if (animationRef.current === null) {
-      animationRef.current = requestAnimationFrame(() => {
-        animationRef.current = null;
-      });
-    }
+    setTransform({ x: pullX, y: pullY, scale: 1.15 });
   }, []);
 
   const handleMouseLeave = useCallback(() => {
-    targetRef.current = { x: 0, y: 0, scale: 1 };
-    setIsHovered(false);
-    
-    if (animationRef.current === null) {
-      animationRef.current = requestAnimationFrame(() => {
-        animationRef.current = null;
-      });
-    }
+    setTransform({ x: 0, y: 0, scale: 1 });
   }, []);
-
-  const handleMouseDown = useCallback(() => {
-    targetRef.current = { ...targetRef.current, scale: 1.05 };
-  }, []);
-
-  const handleMouseUp = useCallback(() => {
-    if (isHovered) {
-      targetRef.current = { ...targetRef.current, scale: 1.18 };
-    }
-  }, [isHovered]);
 
   return (
     <button
@@ -141,45 +59,34 @@ function MagneticColorButton({
       onClick={onClick}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
-      onMouseDown={handleMouseDown}
-      onMouseUp={handleMouseUp}
       className={cn(
-        'w-7 h-7 rounded-md relative will-change-transform',
+        'w-7 h-7 rounded-md relative',
+        'transition-[background-color,box-shadow] duration-150',
         'focus:outline-none',
         isDefault && 'border border-dashed border-muted-foreground/40'
       )}
       style={{
         backgroundColor: previewColor,
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0) scale(${transform.scale})`,
-        boxShadow: isHovered 
-          ? `0 ${4 + transform.scale * 2}px ${8 + transform.scale * 4}px ${hexToRgba(colorValue, 0.35)}, 
-             0 ${1 + transform.scale}px ${2 + transform.scale}px ${hexToRgba(colorValue, 0.2)},
-             inset 0 1px 0 ${hexToRgba('#ffffff', 0.15)}`
-          : `inset 0 1px 0 ${hexToRgba('#ffffff', 0.1)}`,
-        transition: 'box-shadow 0.2s ease-out, background-color 0.15s',
+        transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
+        transition: transform.scale === 1 
+          ? 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.15s, box-shadow 0.15s' 
+          : 'transform 0.1s ease-out, background-color 0.15s, box-shadow 0.15s',
+        boxShadow: transform.scale > 1 
+          ? `0 4px 12px ${hexToRgba(colorValue, 0.3)}, 0 0 0 1px ${hexToRgba(colorValue, 0.1)}`
+          : undefined,
       }}
     >
-      {isHovered && !isDefault && (
-        <div 
-          className="absolute inset-0 rounded-md pointer-events-none"
-          style={{
-            background: `linear-gradient(135deg, ${hexToRgba('#ffffff', 0.2)} 0%, transparent 50%)`,
-          }}
-        />
-      )}
-      
       {isSelected && (
         <Check
           className={cn(
             'w-3.5 h-3.5 m-auto relative z-10',
+            'animate-in zoom-in-50 duration-150',
             isDefault ? 'text-muted-foreground' : 'text-foreground'
           )}
           strokeWidth={3}
           style={{
             color: isDefault ? undefined : colorValue,
-            filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.25))',
-            transform: `scale(${isHovered ? 1.1 : 1})`,
-            transition: 'transform 0.15s ease-out',
+            filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.15))',
           }}
         />
       )}

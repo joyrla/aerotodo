@@ -18,18 +18,15 @@ import { format } from 'date-fns';
 import { storage } from '@/lib/utils/storage';
 import { toast } from 'sonner';
 
-import { TASK_COLORS, getTaskColor } from '@/components/ui/color-picker';
+import { TASK_COLORS, getTaskColor, hexToRgba } from '@/components/ui/color-picker';
 
-// Color grid matching the shared TASK_COLORS - all 10 colors
-const colorGrid: TaskColor[] = ['red', 'pink', 'orange', 'yellow', 'green', 'teal', 'blue', 'purple', 'gray'];
+// Color grid matching the shared TASK_COLORS - all 12 colors (11 + clear)
+const colorGrid: TaskColor[] = [
+  'red', 'pink', 'orange', 'yellow',
+  'green', 'teal', 'cyan', 'blue',
+  'purple', 'brown', 'gray', 'default',
+];
 
-// Helper to convert hex to rgba
-const hexToRgba = (hex: string, opacity: number): string => {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
-};
 
 const repeatOptions: Array<{ value: RepeatPattern; label: string; icon?: string }> = [
   { value: null, label: 'No repeat', icon: '✕' },
@@ -489,7 +486,7 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
                     }}
                   >
                     {task.color !== 'default' ? (
-                      <div className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: getTaskColor(task.color) }} />
+                      <div className="w-3.5 h-3.5 rounded-md" style={{ backgroundColor: hexToRgba(getTaskColor(task.color), 0.5) }} />
                     ) : (
                       <Palette className="w-3 h-3 text-muted-foreground" />
                     )}
@@ -498,13 +495,15 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
                 <PopoverContent 
                   align="start" 
                   side="bottom" 
-                  className="w-auto p-2 rounded-xl shadow-lg"
+                  className="w-auto p-1.5 rounded-lg border-border/20 bg-popover/98 backdrop-blur-xl shadow-xl shadow-black/15"
                   sideOffset={6}
                 >
-                  <div className="grid grid-cols-5 gap-2">
+                  <div className="grid grid-cols-4 gap-0.5">
                     {colorGrid.map((color) => {
                       const isSelected = task.color === color;
+                      const isDefault = color === 'default';
                       const value = getTaskColor(color);
+                      const previewColor = isDefault ? 'transparent' : hexToRgba(value, 0.5);
                       return (
                         <button
                           key={color}
@@ -513,33 +512,22 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
                             setShowMobileColorPicker(false);
                           }}
                           className={cn(
-                            "w-7 h-7 rounded-full transition-all duration-150 flex items-center justify-center",
+                            "w-7 h-7 rounded-md transition-all duration-150 flex items-center justify-center",
                             "hover:scale-110 active:scale-95",
-                            isSelected && "ring-2 ring-offset-2 ring-offset-popover"
+                            isDefault && "border border-dashed border-muted-foreground/40"
                           )}
-                          style={{ 
-                            backgroundColor: value,
-                            ['--tw-ring-color' as string]: value,
-                          }}
+                          style={{ backgroundColor: previewColor }}
                         >
-                          {isSelected && <Check className="w-3 h-3 text-white drop-shadow-sm" strokeWidth={3} />}
+                          {isSelected && (
+                            <Check 
+                              className={cn("w-3.5 h-3.5", isDefault ? "text-muted-foreground" : "text-foreground")} 
+                              strokeWidth={3}
+                              style={{ color: isDefault ? undefined : value, filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.15))' }}
+                            />
+                          )}
                         </button>
                       );
                     })}
-                    {/* No color option */}
-                    <button
-                      onClick={() => {
-                        updateTask(task.id, { color: 'default' });
-                        setShowMobileColorPicker(false);
-                      }}
-                      className={cn(
-                        "w-7 h-7 rounded-full flex items-center justify-center transition-all duration-150",
-                        "hover:scale-110 active:scale-95 border-2 border-dashed border-muted-foreground/30",
-                        task.color === 'default' && "ring-2 ring-offset-2 ring-offset-popover ring-muted-foreground"
-                      )}
-                    >
-                      {task.color === 'default' && <Check className="w-3 h-3 text-muted-foreground" strokeWidth={3} />}
-                    </button>
                   </div>
                 </PopoverContent>
               </Popover>
@@ -1007,7 +995,7 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
               <PopoverTrigger asChild>
                 <button
                   className={cn(
-                    "h-8 w-8 rounded-full flex items-center justify-center transition-all border",
+                    "h-8 w-8 rounded-md flex items-center justify-center transition-all border",
                     task.color !== 'default'
                       ? "border-transparent"
                       : "bg-muted/40 border-transparent hover:bg-muted/60",
@@ -1020,7 +1008,7 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
                   }}
                 >
                   {task.color !== 'default' ? (
-                    <div className="w-4 h-4 rounded-full" style={{ backgroundColor: getTaskColor(task.color) }} />
+                    <div className="w-4 h-4 rounded-md" style={{ backgroundColor: hexToRgba(getTaskColor(task.color), 0.5) }} />
                   ) : (
                     <Palette className="w-3.5 h-3.5 text-muted-foreground" />
                   )}
@@ -1029,28 +1017,15 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
               <PopoverContent 
                 align="start" 
                 side="bottom" 
-                className="w-auto p-3 rounded-2xl shadow-xl"
+                className="w-auto p-1.5 rounded-lg border-border/20 bg-popover/98 backdrop-blur-xl shadow-xl shadow-black/15"
                 sideOffset={6}
               >
-                <div className="grid grid-cols-3 gap-3">
-                  {/* No color first */}
-                  <button
-                    onClick={() => {
-                      setShowDesktopColorPicker(false);
-                      updateTask(task.id, { color: 'default' });
-                    }}
-                    className={cn(
-                      "w-9 h-9 rounded-full transition-all duration-150 flex items-center justify-center",
-                      "hover:scale-110 active:scale-95 border-2 border-dashed border-muted-foreground/40",
-                      task.color === 'default' && "ring-2 ring-offset-2 ring-offset-popover ring-muted-foreground"
-                    )}
-                    title="No Color"
-                  >
-                    {task.color === 'default' && <Check className="w-4 h-4 text-muted-foreground" strokeWidth={3} />}
-                  </button>
-                  {colorGrid.slice(0, 8).map((color) => {
+                <div className="grid grid-cols-4 gap-0.5">
+                  {colorGrid.map((color) => {
                     const isSelected = task.color === color;
+                    const isDefault = color === 'default';
                     const value = getTaskColor(color);
+                    const previewColor = isDefault ? 'transparent' : hexToRgba(value, 0.5);
                     return (
                       <button
                         key={color}
@@ -1059,17 +1034,20 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
                           updateTask(task.id, { color });
                         }}
                         className={cn(
-                          "w-9 h-9 rounded-full transition-all duration-150 flex items-center justify-center",
+                          "w-7 h-7 rounded-md transition-all duration-150 flex items-center justify-center",
                           "hover:scale-110 active:scale-95",
-                          isSelected && "ring-2 ring-offset-2 ring-offset-popover"
+                          isDefault && "border border-dashed border-muted-foreground/40"
                         )}
-                        style={{ 
-                          backgroundColor: value,
-                          ['--tw-ring-color' as string]: value,
-                        }}
-                        title={color.charAt(0).toUpperCase() + color.slice(1)}
+                        style={{ backgroundColor: previewColor }}
+                        title={isDefault ? 'No Color' : color.charAt(0).toUpperCase() + color.slice(1)}
                       >
-                        {isSelected && <Check className="w-4 h-4 text-white drop-shadow-sm" strokeWidth={3} />}
+                        {isSelected && (
+                          <Check 
+                            className={cn("w-3.5 h-3.5", isDefault ? "text-muted-foreground" : "text-foreground")} 
+                            strokeWidth={3}
+                            style={{ color: isDefault ? undefined : value, filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.15))' }}
+                          />
+                        )}
                       </button>
                     );
                   })}
