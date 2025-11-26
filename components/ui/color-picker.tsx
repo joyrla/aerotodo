@@ -3,6 +3,7 @@
 import { TaskColor } from '@/types';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useState, useRef, useCallback } from 'react';
 import {
   Popover,
   PopoverContent,
@@ -58,6 +59,89 @@ interface ColorPickerProps {
   align?: 'start' | 'center' | 'end';
 }
 
+// Magnetic color button with Apple-style cursor attraction
+function MagneticColorButton({
+  color,
+  isSelected,
+  onClick,
+}: {
+  color: TaskColor;
+  isSelected: boolean;
+  onClick: () => void;
+}) {
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
+  
+  const isDefault = color === 'default';
+  const colorValue = TASK_COLORS[color];
+  const previewColor = isDefault ? 'transparent' : hexToRgba(colorValue, 0.5);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!buttonRef.current) return;
+    
+    const rect = buttonRef.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    
+    const distanceX = e.clientX - centerX;
+    const distanceY = e.clientY - centerY;
+    
+    // Magnetic pull strength - pulls toward cursor
+    const magnetStrength = 0.35;
+    const maxPull = 4;
+    
+    const pullX = Math.max(-maxPull, Math.min(maxPull, distanceX * magnetStrength));
+    const pullY = Math.max(-maxPull, Math.min(maxPull, distanceY * magnetStrength));
+    
+    setTransform({ x: pullX, y: pullY, scale: 1.15 });
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setTransform({ x: 0, y: 0, scale: 1 });
+  }, []);
+
+  return (
+    <button
+      ref={buttonRef}
+      onClick={onClick}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      className={cn(
+        'w-7 h-7 rounded-md relative',
+        'transition-[background-color,box-shadow] duration-150',
+        'focus:outline-none',
+        isDefault && 'border border-dashed border-muted-foreground/40'
+      )}
+      style={{
+        backgroundColor: previewColor,
+        transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
+        transition: transform.scale === 1 
+          ? 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.15s, box-shadow 0.15s' 
+          : 'transform 0.1s ease-out, background-color 0.15s, box-shadow 0.15s',
+        boxShadow: transform.scale > 1 
+          ? `0 4px 12px ${hexToRgba(colorValue, 0.3)}, 0 0 0 1px ${hexToRgba(colorValue, 0.1)}`
+          : undefined,
+      }}
+    >
+      {/* Checkmark for selected */}
+      {isSelected && (
+        <Check
+          className={cn(
+            'w-3.5 h-3.5 m-auto relative z-10',
+            'animate-in zoom-in-50 duration-150',
+            isDefault ? 'text-muted-foreground' : 'text-foreground'
+          )}
+          strokeWidth={3}
+          style={{
+            color: isDefault ? undefined : colorValue,
+            filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.15))',
+          }}
+        />
+      )}
+    </button>
+  );
+}
+
 export function ColorPicker({
   selectedColor,
   onColorChange,
@@ -81,64 +165,22 @@ export function ColorPicker({
         side={side}
         align={align}
         className={cn(
-          'w-auto p-2 rounded-xl border-border/30 bg-popover/95 backdrop-blur-md',
-          'shadow-lg shadow-black/10',
-          'animate-in fade-in-0 zoom-in-95 duration-150'
+          'w-auto p-1.5 rounded-lg border-border/20 bg-popover/98 backdrop-blur-xl',
+          'shadow-xl shadow-black/15',
+          'animate-in fade-in-0 zoom-in-95 duration-200'
         )}
         sideOffset={8}
       >
-        {/* 4x3 grid with staggered animation */}
-        <div className="grid grid-cols-4 gap-1.5">
-          {colorGrid.map((color, index) => {
-            const isSelected = selectedColor === color;
-            const isDefault = color === 'default';
-            const colorValue = TASK_COLORS[color];
-            // Solid fill for clear differentiation - no borders
-            const previewColor = isDefault ? 'transparent' : hexToRgba(colorValue, 0.45);
-
-            return (
-              <button
-                key={color}
-                onClick={() => handleColorSelect(color)}
-                className={cn(
-                  'w-7 h-7 rounded-full relative',
-                  'transition-all duration-200 ease-out',
-                  'hover:scale-110 hover:-translate-y-0.5',
-                  'active:scale-95 active:translate-y-0',
-                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50',
-                  isDefault && 'border-2 border-dashed border-muted-foreground/30 hover:border-muted-foreground/50'
-                )}
-                style={{
-                  backgroundColor: previewColor,
-                  animationDelay: `${index * 20}ms`,
-                }}
-              >
-                {/* Selection ring */}
-                {isSelected && (
-                  <span 
-                    className="absolute inset-[-4px] rounded-full border-2 animate-in zoom-in-50 duration-150"
-                    style={{ 
-                      borderColor: isDefault ? 'hsl(var(--muted-foreground))' : colorValue,
-                    }}
-                  />
-                )}
-                {/* Checkmark */}
-                {isSelected && (
-                  <Check
-                    className={cn(
-                      'w-3.5 h-3.5 m-auto relative z-10',
-                      'animate-in zoom-in-50 duration-150',
-                      isDefault ? 'text-muted-foreground' : 'text-foreground'
-                    )}
-                    strokeWidth={2.5}
-                    style={{
-                      color: isDefault ? undefined : colorValue,
-                    }}
-                  />
-                )}
-              </button>
-            );
-          })}
+        {/* 4x3 grid with magnetic buttons - compact */}
+        <div className="grid grid-cols-4 gap-0.5">
+          {colorGrid.map((color) => (
+            <MagneticColorButton
+              key={color}
+              color={color}
+              isSelected={selectedColor === color}
+              onClick={() => handleColorSelect(color)}
+            />
+          ))}
         </div>
       </PopoverContent>
     </Popover>

@@ -7,8 +7,92 @@ import { TaskDetailModal } from './TaskDetailModal';
 import { Trash2, Palette, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { TASK_COLORS, getTaskColor } from '@/components/ui/color-picker';
+import { TASK_COLORS, getTaskColor, hexToRgba } from '@/components/ui/color-picker';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+
+// Magnetic color button with Apple-style cursor attraction
+function MagneticColorButton({
+  color,
+  colorValue,
+  previewColor,
+  isSelected,
+  isDefault,
+  onClick,
+}: {
+  color: TaskColor;
+  colorValue: string;
+  previewColor: string;
+  isSelected: boolean;
+  isDefault: boolean;
+  onClick: (e: React.MouseEvent) => void;
+}) {
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!buttonRef.current) return;
+    
+    const rect = buttonRef.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    
+    const distanceX = e.clientX - centerX;
+    const distanceY = e.clientY - centerY;
+    
+    // Magnetic pull strength
+    const magnetStrength = 0.35;
+    const maxPull = 4;
+    
+    const pullX = Math.max(-maxPull, Math.min(maxPull, distanceX * magnetStrength));
+    const pullY = Math.max(-maxPull, Math.min(maxPull, distanceY * magnetStrength));
+    
+    setTransform({ x: pullX, y: pullY, scale: 1.15 });
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setTransform({ x: 0, y: 0, scale: 1 });
+  }, []);
+
+  return (
+    <button
+      ref={buttonRef}
+      onClick={onClick}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      className={cn(
+        'w-7 h-7 rounded-md relative',
+        'transition-[background-color,box-shadow] duration-150',
+        'focus:outline-none',
+        isDefault && 'border border-dashed border-muted-foreground/40'
+      )}
+      style={{
+        backgroundColor: previewColor,
+        transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
+        transition: transform.scale === 1 
+          ? 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.15s, box-shadow 0.15s' 
+          : 'transform 0.1s ease-out, background-color 0.15s, box-shadow 0.15s',
+        boxShadow: transform.scale > 1 
+          ? `0 4px 12px ${hexToRgba(colorValue, 0.3)}, 0 0 0 1px ${hexToRgba(colorValue, 0.1)}`
+          : undefined,
+      }}
+    >
+      {isSelected && (
+        <Check
+          className={cn(
+            'w-3.5 h-3.5 m-auto relative z-10',
+            'animate-in zoom-in-50 duration-150',
+            isDefault ? 'text-muted-foreground' : 'text-foreground'
+          )}
+          strokeWidth={3}
+          style={{
+            color: isDefault ? undefined : colorValue,
+            filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.15))',
+          }}
+        />
+      )}
+    </button>
+  );
+}
 
 interface TaskProps {
   task: TaskType;
@@ -349,60 +433,33 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
                       side="bottom"
                       align="end"
                       className={cn(
-                        'w-auto p-2 rounded-xl border-border/30 bg-popover/95 backdrop-blur-md',
-                        'shadow-lg shadow-black/10',
-                        'animate-in fade-in-0 zoom-in-95 duration-150'
+                        'w-auto p-1.5 rounded-lg border-border/20 bg-popover/98 backdrop-blur-xl',
+                        'shadow-xl shadow-black/15',
+                        'animate-in fade-in-0 zoom-in-95 duration-200'
                       )}
                       sideOffset={8}
                     >
-                      {/* 4x3 grid - no borders, solid fill */}
-                      <div className="grid grid-cols-4 gap-1.5">
+                      {/* 4x3 grid - compact magnetic buttons */}
+                      <div className="grid grid-cols-4 gap-0.5">
                         {colorGrid.map((color) => {
                           const isSelected = (task.color || 'default') === color;
                           const isDefault = color === 'default';
                           const value = TASK_COLORS[color];
-                          // Solid fill for clear differentiation - no borders
-                          const previewColor = isDefault ? 'transparent' : hexToRgba(value, 0.45);
+                          const previewColor = isDefault ? 'transparent' : hexToRgba(value, 0.5);
 
                           return (
-                            <button
+                            <MagneticColorButton
                               key={color}
+                              color={color}
+                              colorValue={value}
+                              previewColor={previewColor}
+                              isSelected={isSelected}
+                              isDefault={isDefault}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleColorChange(color);
                               }}
-                              className={cn(
-                                'w-7 h-7 rounded-full relative',
-                                'transition-all duration-200 ease-out',
-                                'hover:scale-110 hover:-translate-y-0.5',
-                                'active:scale-95 active:translate-y-0',
-                                'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50',
-                                isDefault && 'border-2 border-dashed border-muted-foreground/30 hover:border-muted-foreground/50'
-                              )}
-                              style={{
-                                backgroundColor: previewColor,
-                              }}
-                            >
-                              {/* Selection ring */}
-                              {isSelected && (
-                                <span 
-                                  className="absolute inset-[-4px] rounded-full border-2 animate-in zoom-in-50 duration-150"
-                                  style={{ borderColor: isDefault ? 'hsl(var(--muted-foreground))' : value }}
-                                />
-                              )}
-                              {/* Checkmark */}
-                              {isSelected && (
-                                <Check
-                                  className={cn(
-                                    'w-3.5 h-3.5 m-auto relative z-10',
-                                    'animate-in zoom-in-50 duration-150',
-                                    isDefault ? 'text-muted-foreground' : 'text-foreground'
-                                  )}
-                                  strokeWidth={2.5}
-                                  style={{ color: isDefault ? undefined : value }}
-                                />
-                              )}
-                            </button>
+                            />
                           );
                         })}
                       </div>
