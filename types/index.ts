@@ -119,7 +119,10 @@ export interface TaskFilter {
 export interface CalendarContextType {
   state: CalendarState;
   tasks: Task[];
+  filteredTasks: Task[];
   projects: Project[];
+  currentProfileId: string | null;
+  setCurrentProfileId: (id: string | null) => void;
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Task;
   updateTask: (id: string, updates: Partial<Task>) => void;
   deleteTask: (id: string) => void;
@@ -162,6 +165,8 @@ export interface GoogleCalendarSettings {
   twoWaySync: boolean; // Sync changes from GCal back to app
   syncAllTasks: boolean; // Sync all tasks or only selected ones
   syncTimeBlockedOnly: boolean; // Only sync tasks with time slots
+  deleteFromGcal: boolean; // Remove events from GCal when tasks deleted
+  treatAsEvents: boolean; // Treat imported events as non-task events
   lastSyncAt?: string;
 }
 
