@@ -228,7 +228,7 @@ export function CalendarProvider({ children }: { children: React.ReactNode }) {
     if (user && supabase) {
       supabase
         .from('projects')
-        .insert(newProjects.map(project => mapProjectToDB(project, user.id)))
+        .upsert(newProjects.map(project => mapProjectToDB(project, user.id)), { onConflict: 'id' })
         .then(({ error }) => {
           if (error) {
             console.error('Error creating profile-backed project:', error);
