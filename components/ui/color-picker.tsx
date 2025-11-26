@@ -33,10 +33,15 @@ export function getTaskColor(color: TaskColor | string): string {
   return TASK_COLORS[color as TaskColor] || TASK_COLORS.default;
 }
 
+/** Convert hex to rgba - matches task highlight opacity */
+export function hexToRgba(hex: string, opacity: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+}
+
 // 4x3 grid layout matching Google Calendar (11 colors + clear = 12)
-// Row 1: Red, Pink, Orange, Yellow
-// Row 2: Green, Teal, Cyan, Blue
-// Row 3: Purple, Brown, Gray, Clear
 const colorGrid: TaskColor[] = [
   'red', 'pink', 'orange', 'yellow',
   'green', 'teal', 'cyan', 'blue',
@@ -75,42 +80,63 @@ export function ColorPicker({
       <PopoverContent
         side={side}
         align={align}
-        className="w-auto p-1.5 rounded-lg shadow-md border-border/40 bg-popover/98 backdrop-blur-sm"
-        sideOffset={6}
+        className={cn(
+          'w-auto p-2 rounded-xl border-border/30 bg-popover/95 backdrop-blur-md',
+          'shadow-lg shadow-black/10',
+          'animate-in fade-in-0 zoom-in-95 duration-150'
+        )}
+        sideOffset={8}
       >
-        {/* 4x3 grid */}
-        <div className="grid grid-cols-4 gap-1">
-          {colorGrid.map((color) => {
+        {/* 4x3 grid with staggered animation */}
+        <div className="grid grid-cols-4 gap-1.5">
+          {colorGrid.map((color, index) => {
             const isSelected = selectedColor === color;
             const isDefault = color === 'default';
             const colorValue = TASK_COLORS[color];
+            // Use same opacity as task highlight (12%) for preview
+            const previewColor = isDefault ? 'transparent' : hexToRgba(colorValue, 0.35);
+            const borderColor = isDefault ? 'transparent' : hexToRgba(colorValue, 0.6);
 
             return (
               <button
                 key={color}
                 onClick={() => handleColorSelect(color)}
                 className={cn(
-                  'w-6 h-6 rounded-full transition-transform duration-100',
-                  'hover:scale-115 active:scale-95',
-                  'focus:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-                  isDefault && 'border border-dashed border-muted-foreground/40'
+                  'w-7 h-7 rounded-full relative',
+                  'transition-all duration-200 ease-out',
+                  'hover:scale-110 hover:-translate-y-0.5',
+                  'active:scale-95 active:translate-y-0',
+                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50',
+                  isDefault && 'border-2 border-dashed border-muted-foreground/30 hover:border-muted-foreground/50'
                 )}
                 style={{
-                  backgroundColor: isDefault ? 'transparent' : colorValue,
-                  boxShadow: isSelected 
-                    ? `0 0 0 2px var(--popover), 0 0 0 4px ${isDefault ? 'hsl(var(--muted-foreground))' : colorValue}`
-                    : undefined,
+                  backgroundColor: previewColor,
+                  borderColor: isDefault ? undefined : borderColor,
+                  borderWidth: isDefault ? undefined : '2px',
+                  borderStyle: isDefault ? undefined : 'solid',
+                  animationDelay: `${index * 20}ms`,
                 }}
               >
+                {/* Selection ring */}
+                {isSelected && (
+                  <span 
+                    className="absolute inset-[-4px] rounded-full border-2 animate-in zoom-in-50 duration-150"
+                    style={{ 
+                      borderColor: isDefault ? 'hsl(var(--muted-foreground))' : colorValue,
+                    }}
+                  />
+                )}
+                {/* Checkmark */}
                 {isSelected && (
                   <Check
                     className={cn(
-                      'w-3 h-3 m-auto',
-                      isDefault ? 'text-muted-foreground' : 'text-white'
+                      'w-3.5 h-3.5 m-auto relative z-10',
+                      'animate-in zoom-in-50 duration-150',
+                      isDefault ? 'text-muted-foreground' : 'text-foreground'
                     )}
                     strokeWidth={2.5}
                     style={{
-                      filter: isDefault ? 'none' : 'drop-shadow(0 1px 1px rgba(0,0,0,0.3))'
+                      color: isDefault ? undefined : colorValue,
                     }}
                   />
                 )}

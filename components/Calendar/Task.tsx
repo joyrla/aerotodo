@@ -348,15 +348,22 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
                     <PopoverContent
                       side="bottom"
                       align="end"
-                      className="w-auto p-1.5 rounded-lg shadow-md border-border/40 bg-popover/98 backdrop-blur-sm"
-                      sideOffset={6}
+                      className={cn(
+                        'w-auto p-2 rounded-xl border-border/30 bg-popover/95 backdrop-blur-md',
+                        'shadow-lg shadow-black/10',
+                        'animate-in fade-in-0 zoom-in-95 duration-150'
+                      )}
+                      sideOffset={8}
                     >
-                      {/* Compact 4-column grid */}
-                      <div className="grid grid-cols-4 gap-1">
-                        {colorGrid.map((color) => {
+                      {/* 4x3 grid with matching preview colors */}
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {colorGrid.map((color, index) => {
                           const isSelected = (task.color || 'default') === color;
                           const isDefault = color === 'default';
                           const value = TASK_COLORS[color];
+                          // Match task highlight opacity for preview
+                          const previewColor = isDefault ? 'transparent' : hexToRgba(value, 0.35);
+                          const borderColor = isDefault ? 'transparent' : hexToRgba(value, 0.6);
 
                           return (
                             <button
@@ -366,25 +373,37 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
                                 handleColorChange(color);
                               }}
                               className={cn(
-                                'w-6 h-6 rounded-full transition-transform duration-100',
-                                'hover:scale-115 active:scale-95',
-                                'focus:outline-none focus-visible:ring-1 focus-visible:ring-ring',
-                                isDefault && 'border border-dashed border-muted-foreground/40'
+                                'w-7 h-7 rounded-full relative',
+                                'transition-all duration-200 ease-out',
+                                'hover:scale-110 hover:-translate-y-0.5',
+                                'active:scale-95 active:translate-y-0',
+                                'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50',
+                                isDefault && 'border-2 border-dashed border-muted-foreground/30 hover:border-muted-foreground/50'
                               )}
                               style={{
-                                backgroundColor: isDefault ? 'transparent' : value,
-                                boxShadow: isSelected 
-                                  ? `0 0 0 2px var(--popover), 0 0 0 4px ${isDefault ? 'hsl(var(--muted-foreground))' : value}`
-                                  : undefined,
+                                backgroundColor: previewColor,
+                                borderColor: isDefault ? undefined : borderColor,
+                                borderWidth: isDefault ? undefined : '2px',
+                                borderStyle: isDefault ? undefined : 'solid',
                               }}
                             >
+                              {/* Selection ring */}
+                              {isSelected && (
+                                <span 
+                                  className="absolute inset-[-4px] rounded-full border-2 animate-in zoom-in-50 duration-150"
+                                  style={{ borderColor: isDefault ? 'hsl(var(--muted-foreground))' : value }}
+                                />
+                              )}
+                              {/* Checkmark */}
                               {isSelected && (
                                 <Check
-                                  className={cn('w-3 h-3 m-auto', isDefault ? 'text-muted-foreground' : 'text-white')}
+                                  className={cn(
+                                    'w-3.5 h-3.5 m-auto relative z-10',
+                                    'animate-in zoom-in-50 duration-150',
+                                    isDefault ? 'text-muted-foreground' : 'text-foreground'
+                                  )}
                                   strokeWidth={2.5}
-                                  style={{
-                                    filter: isDefault ? 'none' : 'drop-shadow(0 1px 1px rgba(0,0,0,0.3))'
-                                  }}
+                                  style={{ color: isDefault ? undefined : value }}
                                 />
                               )}
                             </button>
