@@ -414,9 +414,9 @@ export function MonthView() {
                         )}
                         style={{
                           backgroundColor: task.color === 'default' 
-                            ? 'rgba(107, 114, 128, 0.1)' 
-                            : `${getColorValue(task.color)}15`,
-                          borderLeft: `3px solid ${getColorValue(task.color)}`,
+                            ? 'rgba(107, 114, 128, 0.08)' 
+                            : `${getColorValue(task.color)}12`,
+                          borderLeft: `2px solid ${task.color === 'default' ? 'rgba(107, 114, 128, 0.3)' : getColorValue(task.color)}50`,
                         }}
                       >
                         <div 
