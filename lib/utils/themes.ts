@@ -120,18 +120,17 @@ export function applyTheme(themeName: ThemeName, mode: 'light' | 'dark' = 'light
   });
 }
 
-export type ThemeShape = 'squared' | 'squircle' | 'pill';
+export type RadiusOption = 'squared' | 'squircle' | 'pill';
 
-export const themeShapes: Record<ThemeShape, { label: string; radius: string }> = {
-  squared: { label: 'Squared', radius: '0.25rem' },
-  squircle: { label: 'Squircle', radius: '0.75rem' },
-  pill: { label: 'Pill', radius: '9999px' },
+export const radiusValues: Record<RadiusOption, string> = {
+  squared: '0.25rem',
+  squircle: '0.75rem',
+  pill: '9999px',
 };
 
-export function applyRadius(shape: ThemeShape) {
+export function applyRadius(option: RadiusOption) {
   const root = document.documentElement;
-  const config = themeShapes[shape];
-  root.style.setProperty('--radius', config.radius);
+  root.style.setProperty('--radius', radiusValues[option]);
 }
 
 export function getCurrentTheme(): ThemeName {
@@ -139,9 +138,9 @@ export function getCurrentTheme(): ThemeName {
   return (localStorage.getItem('aerotodo_theme') as ThemeName) || 'mint';
 }
 
-export function getCurrentShape(): ThemeShape {
+export function getCurrentRadius(): RadiusOption {
   if (typeof window === 'undefined') return 'squared';
-  return (localStorage.getItem('aerotodo_shape') as ThemeShape) || 'squared';
+  return (localStorage.getItem('aerotodo_radius') as RadiusOption) || 'squared';
 }
 
 export function saveTheme(themeName: ThemeName) {
@@ -149,8 +148,8 @@ export function saveTheme(themeName: ThemeName) {
   localStorage.setItem('aerotodo_theme', themeName);
 }
 
-export function saveShape(shape: ThemeShape) {
+export function saveRadius(option: RadiusOption) {
   if (typeof window === 'undefined') return;
-  localStorage.setItem('aerotodo_shape', shape);
+  localStorage.setItem('aerotodo_radius', option);
 }
 

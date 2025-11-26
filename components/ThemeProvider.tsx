@@ -1,16 +1,14 @@
 'use client';
 
 import { useEffect } from 'react';
-import { applyTheme, getCurrentTheme, applyRadius, getCurrentShape } from '@/lib/utils/themes';
+import { applyTheme, getCurrentTheme } from '@/lib/utils/themes';
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
-    // Apply saved theme and shape on mount
+    // Apply saved theme on mount
     const savedTheme = getCurrentTheme();
-    const savedShape = getCurrentShape();
     const isDark = document.documentElement.classList.contains('dark');
     applyTheme(savedTheme, isDark ? 'dark' : 'light');
-    applyRadius(savedShape);
 
     // Listen for theme changes (light/dark mode toggle)
     const observer = new MutationObserver((mutations) => {

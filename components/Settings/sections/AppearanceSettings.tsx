@@ -3,18 +3,18 @@
 import { useState, useEffect } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { themes, applyTheme, getCurrentTheme, saveTheme, ThemeName, applyRadius, getCurrentShape, saveShape, ThemeShape, themeShapes } from '@/lib/utils/themes';
+import { themes, applyTheme, getCurrentTheme, saveTheme, ThemeName, applyRadius, getCurrentRadius, saveRadius, RadiusOption } from '@/lib/utils/themes';
 import { useSettings } from '@/lib/contexts/SettingsContext';
 import { SettingsSection } from '../SettingsSection';
 
 export function AppearanceSettings() {
   const { preferences, updatePreferences } = useSettings();
   const [selectedTheme, setSelectedTheme] = useState<ThemeName>('default');
-  const [selectedShape, setSelectedShape] = useState<ThemeShape>('squared');
+  const [selectedRadius, setSelectedRadius] = useState<RadiusOption>('squared');
 
   useEffect(() => {
     setSelectedTheme(getCurrentTheme());
-    setSelectedShape(getCurrentShape());
+    setSelectedRadius(getCurrentRadius());
   }, []);
 
   const handleThemeChange = (themeName: ThemeName) => {
@@ -25,9 +25,9 @@ export function AppearanceSettings() {
     applyTheme(themeName, isDark ? 'dark' : 'light');
   };
 
-  const handleShapeChange = (value: ThemeShape) => {
-    setSelectedShape(value);
-    saveShape(value);
+  const handleRadiusChange = (value: RadiusOption) => {
+    setSelectedRadius(value);
+    saveRadius(value);
     applyRadius(value);
   };
 
@@ -67,23 +67,21 @@ export function AppearanceSettings() {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="shape-select" className="text-sm font-mono">
+          <Label htmlFor="radius-select" className="text-sm font-mono">
             Theme Shape
           </Label>
-          <Select value={selectedShape} onValueChange={handleShapeChange}>
-            <SelectTrigger id="shape-select" className="font-mono">
+          <Select value={selectedRadius} onValueChange={(v) => handleRadiusChange(v as RadiusOption)}>
+            <SelectTrigger id="radius-select" className="font-mono">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(themeShapes).map(([key, config]) => (
-                <SelectItem key={key} value={key} className="font-mono">
-                  {config.label}
-                </SelectItem>
-              ))}
+              <SelectItem value="squared" className="font-mono">Squared</SelectItem>
+              <SelectItem value="squircle" className="font-mono">Squircle</SelectItem>
+              <SelectItem value="pill" className="font-mono">Pill</SelectItem>
             </SelectContent>
           </Select>
           <p className="text-xs text-muted-foreground font-mono">
-            Choose between squared, squircle, or pill-shaped UI elements.
+            Choose squared, squircle, or pill-shaped UI elements.
           </p>
         </div>
 
