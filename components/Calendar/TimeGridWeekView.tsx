@@ -556,7 +556,7 @@ export function TimeGridWeekView() {
                                           {...provided.dragHandleProps}
                                           className="h-full flex flex-col gap-0.5 overflow-hidden"
                                         >
-                                          <div className="font-medium truncate leading-tight flex items-center gap-1">
+                                          <div className="font-mono font-medium truncate leading-tight flex items-center gap-1 text-[11px] md:text-xs">
                                              {task.completed && <span className="opacity-70 text-[8px]">✓</span>}
                                              <span className={cn("truncate", task.completed && "line-through decoration-current/50")}>
                                                {task.title?.trim() || 'Untitled'}

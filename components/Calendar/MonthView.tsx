@@ -381,7 +381,7 @@ export function MonthView() {
                       <div
                         key={task.id}
                         className={cn(
-                          "text-[9px] leading-tight truncate px-1 py-0.5 rounded font-medium",
+                          "text-[9px] leading-tight truncate px-1 py-0.5 rounded font-mono font-medium",
                           task.completed && "opacity-50 line-through"
                         )}
                         style={{
