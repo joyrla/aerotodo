@@ -7,14 +7,19 @@ import { TaskDetailModal } from './TaskDetailModal';
 import { Trash2, Palette, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { TASK_COLORS, getTaskColor } from '@/components/ui/color-picker';
 
-
-// Modern, minimal color palette - 5 essential colors with pastel versions
-const colorOptions: Array<{ color: TaskColor; value: string; pastelValue: string; label: string }> = [
-  { color: 'blue', value: '#3b82f6', pastelValue: 'rgba(59, 130, 246, 0.12)', label: 'Blue' },
-  { color: 'green', value: '#10b981', pastelValue: 'rgba(16, 185, 129, 0.12)', label: 'Green' },
-  { color: 'yellow', value: '#f59e0b', pastelValue: 'rgba(245, 158, 11, 0.12)', label: 'Yellow' },
-  { color: 'red', value: '#ef4444', pastelValue: 'rgba(239, 68, 68, 0.12)', label: 'Red' },
+// Color options for inline picker (subset of all colors for quick access)
+const colorOptions: Array<{ color: TaskColor; value: string; label: string }> = [
+  { color: 'red', value: TASK_COLORS.red, label: 'Red' },
+  { color: 'orange', value: TASK_COLORS.orange, label: 'Orange' },
+  { color: 'yellow', value: TASK_COLORS.yellow, label: 'Yellow' },
+  { color: 'green', value: TASK_COLORS.green, label: 'Green' },
+  { color: 'teal', value: TASK_COLORS.teal, label: 'Teal' },
+  { color: 'blue', value: TASK_COLORS.blue, label: 'Blue' },
+  { color: 'purple', value: TASK_COLORS.purple, label: 'Purple' },
+  { color: 'pink', value: TASK_COLORS.pink, label: 'Pink' },
+  { color: 'gray', value: TASK_COLORS.gray, label: 'Gray' },
 ];
 
 interface TaskProps {
@@ -174,21 +179,9 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
     }
   }, [showColorPicker]);
 
-  // Get color value for highlighting
+  // Get color value for highlighting - uses shared color system
   const getColorValue = (color: TaskType['color']): string => {
-    const colorMap: Record<TaskType['color'], string> = {
-      default: 'transparent',
-      blue: '#3b82f6',
-      green: '#10b981',
-      yellow: '#f59e0b',
-      orange: '#f97316',
-      red: '#ef4444',
-      pink: '#ec4899',
-      purple: '#a855f7',
-      teal: '#14b8a6',
-      gray: '#6b7280',
-    };
-    return colorMap[color];
+    return getTaskColor(color);
   };
 
   // Convert hex to rgba with opacity
@@ -436,9 +429,8 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
                        : 'opacity-0 max-w-0 pointer-events-none -translate-x-2'
               )}
             >
-                {colorOptions.map(({ color, pastelValue, label }) => {
+                {colorOptions.map(({ color, value, label }) => {
                   const isSelected = task.color === color;
-                    const isTransparent = color === 'default';
                   return (
                     <button
                       key={color}
@@ -447,21 +439,20 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
                         handleColorChange(color);
                       }}
                       className={cn(
-                          'w-5 h-5 rounded transition-all duration-150 ease-out flex items-center justify-center',
+                          'w-5 h-5 rounded-full transition-all duration-150 ease-out flex items-center justify-center',
                           'hover:scale-125',
-                        isSelected && 'scale-110',
-                          isTransparent && 'border border-border/60'
+                        isSelected && 'scale-110 ring-2 ring-offset-1 ring-offset-background',
                       )}
                       style={{
-                        backgroundColor: pastelValue,
+                        backgroundColor: value,
+                        ['--tw-ring-color' as string]: value,
                       }}
                       title={label}
                     >
-                        {isSelected && !isTransparent && (
+                        {isSelected && (
                         <Check 
-                          className="w-3 h-3 drop-shadow-sm" 
-                          strokeWidth={2.5}
-                          style={{ color: getColorValue(color) }}
+                          className="w-3 h-3 text-white drop-shadow-sm" 
+                          strokeWidth={3}
                         />
                       )}
                     </button>
@@ -474,13 +465,13 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
                     handleColorChange('default');
                   }}
                   className={cn(
-                      'w-5 h-5 rounded transition-all duration-150 ease-out flex items-center justify-center',
-                      'hover:scale-125',
-                      task.color === 'default' && 'scale-110'
+                      'w-5 h-5 rounded-full transition-all duration-150 ease-out flex items-center justify-center',
+                      'hover:scale-125 border-2 border-dashed border-muted-foreground/40',
+                      task.color === 'default' && 'scale-110 ring-2 ring-offset-1 ring-offset-background ring-muted-foreground'
                   )}
                     title="No Color"
                 >
-                    <X className="w-3 h-3 text-muted-foreground" />
+                    {task.color === 'default' && <Check className="w-3 h-3 text-muted-foreground" strokeWidth={3} />}
                 </button>
             </div>
 

@@ -11,13 +11,43 @@ interface ColorPickerProps {
   children?: React.ReactNode;
 }
 
-// Modern, minimal color palette - 5 essential colors
+/**
+ * Color palette mapped 1-to-1 with Google Calendar colors
+ * Google Calendar IDs → Our color names:
+ * 1 (Lavender) → blue, 2 (Sage) → green, 3 (Grape) → purple,
+ * 4 (Flamingo) → pink, 5 (Banana) → yellow, 6 (Tangerine) → orange,
+ * 7 (Peacock) → teal, 8 (Graphite) → gray, 11 (Tomato) → red
+ */
+export const TASK_COLORS: Record<TaskColor, string> = {
+  default: '#9ca3af',  // Muted gray for default
+  red: '#d93025',      // Google Tomato - Vibrant red
+  orange: '#f4511e',   // Google Tangerine - Warm orange  
+  yellow: '#f6bf26',   // Google Banana - Bright yellow
+  green: '#0d9488',    // Teal-green - Fresh
+  teal: '#039be5',     // Google Peacock - Cyan blue
+  blue: '#4285f4',     // Google Blue - Primary blue
+  purple: '#7c3aed',   // Google Grape - Rich purple
+  pink: '#e91e63',     // Google Flamingo - Vibrant pink
+  gray: '#5f6368',     // Google Graphite - Neutral gray
+};
+
+/** Get the hex color value for a TaskColor */
+export function getTaskColor(color: TaskColor | string): string {
+  return TASK_COLORS[color as TaskColor] || TASK_COLORS.default;
+}
+
+// Color options organized in a 2-column grid for better UX
 const colorOptions: Array<{ color: TaskColor; value: string; label: string }> = [
+  { color: 'red', value: TASK_COLORS.red, label: 'Red' },
+  { color: 'pink', value: TASK_COLORS.pink, label: 'Pink' },
+  { color: 'orange', value: TASK_COLORS.orange, label: 'Orange' },
+  { color: 'yellow', value: TASK_COLORS.yellow, label: 'Yellow' },
+  { color: 'green', value: TASK_COLORS.green, label: 'Green' },
+  { color: 'teal', value: TASK_COLORS.teal, label: 'Teal' },
+  { color: 'blue', value: TASK_COLORS.blue, label: 'Blue' },
+  { color: 'purple', value: TASK_COLORS.purple, label: 'Purple' },
+  { color: 'gray', value: TASK_COLORS.gray, label: 'Gray' },
   { color: 'default', value: 'transparent', label: 'None' },
-  { color: 'blue', value: '#3b82f6', label: 'Blue' },
-  { color: 'green', value: '#10b981', label: 'Green' },
-  { color: 'yellow', value: '#f59e0b', label: 'Yellow' },
-  { color: 'red', value: '#ef4444', label: 'Red' },
 ];
 
 export function ColorPicker({ selectedColor, onColorChange, children }: ColorPickerProps) {
@@ -48,46 +78,48 @@ export function ColorPicker({ selectedColor, onColorChange, children }: ColorPic
         {children || <button className="w-full h-full" />}
       </div>
       
-      {/* Horizontal Color Menu */}
+      {/* Color Grid Menu */}
       <div
         className={cn(
-          'absolute right-full top-1/2 -translate-y-1/2 mr-2 flex items-center',
-          'bg-background/95 backdrop-blur-sm border border-border rounded shadow-sm',
-          'px-1.5 py-0.5 gap-1',
+          'absolute right-full top-1/2 -translate-y-1/2 mr-2',
+          'bg-background/95 backdrop-blur-xl border border-border rounded-xl shadow-lg',
+          'p-2',
           'transition-all duration-200 ease-out',
           isOpen
             ? 'opacity-100 translate-x-0 pointer-events-auto'
             : 'opacity-0 translate-x-4 pointer-events-none'
         )}
       >
-        {colorOptions.map(({ color, value, label }) => {
-          const isSelected = selectedColor === color;
-          return (
-            <button
-              key={color}
-              className={cn(
-                'w-5 h-5 rounded border transition-all duration-150 flex items-center justify-center',
-                'hover:scale-110 hover:ring-1 hover:ring-offset-1 hover:ring-foreground/20',
-                isSelected
-                  ? 'ring-1 ring-offset-1 ring-foreground/30 scale-110'
-                  : 'border-border/50 hover:border-foreground/40'
-              )}
-              style={{
-                backgroundColor: value === 'transparent' ? 'transparent' : value,
-                borderColor: isSelected && value !== 'transparent' ? value : undefined,
-              }}
-              onClick={() => handleColorSelect(color)}
-              title={label}
-            >
-              {isSelected && value !== 'transparent' && (
-                <Check className="w-2.5 h-2.5 text-white drop-shadow-md" strokeWidth={3} />
-              )}
-              {value === 'transparent' && isSelected && (
-                <div className="w-2 h-2 rounded-full border border-foreground" />
-              )}
-            </button>
-          );
-        })}
+        <div className="grid grid-cols-2 gap-1.5">
+          {colorOptions.map(({ color, value, label }) => {
+            const isSelected = selectedColor === color;
+            const isTransparent = value === 'transparent';
+            return (
+              <button
+                key={color}
+                className={cn(
+                  'w-7 h-7 rounded-full transition-all duration-150 flex items-center justify-center',
+                  'hover:scale-110',
+                  isSelected && 'ring-2 ring-offset-2 ring-offset-background',
+                  isTransparent && 'border-2 border-dashed border-muted-foreground/40'
+                )}
+                style={{
+                  backgroundColor: isTransparent ? 'transparent' : value,
+                  ['--tw-ring-color' as string]: isTransparent ? 'hsl(var(--muted-foreground))' : value,
+                }}
+                onClick={() => handleColorSelect(color)}
+                title={label}
+              >
+                {isSelected && !isTransparent && (
+                  <Check className="w-3.5 h-3.5 text-white drop-shadow-md" strokeWidth={3} />
+                )}
+                {isTransparent && isSelected && (
+                  <Check className="w-3.5 h-3.5 text-muted-foreground" strokeWidth={3} />
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

@@ -12,6 +12,7 @@ import { format, isSameDay } from 'date-fns';
 import { TaskDetailModal } from './TaskDetailModal';
 import { toast } from 'sonner';
 import { ProductivitySection } from './ProductivitySection';
+import { getTaskColor } from '@/components/ui/color-picker';
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 const HOUR_HEIGHT = 60;
@@ -338,21 +339,8 @@ export function TimeGridWeekView() {
     return (duration * hourHeight) - 8;
   }, [hourHeight]);
 
-  const getColorValue = useCallback((color: string): string => {
-    const colorMap: Record<string, string> = {
-      default: 'hsl(var(--muted-foreground))',
-      blue: '#3b82f6',
-      green: '#10b981',
-      yellow: '#f59e0b',
-      orange: '#f97316',
-      red: '#ef4444',
-      pink: '#ec4899',
-      purple: '#a855f7',
-      teal: '#14b8a6',
-      gray: '#6b7280',
-    };
-    return colorMap[color] || colorMap.default;
-  }, []);
+  // Use shared color system
+  const getColorValue = useCallback((color: string): string => getTaskColor(color), []);
 
   if (!isMounted) {
     return (

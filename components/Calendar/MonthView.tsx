@@ -12,6 +12,7 @@ import { TaskDetailModal } from './TaskDetailModal';
 import { Plus, Minus, Edit3, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
+import { getTaskColor } from '@/components/ui/color-picker';
 
 export function MonthView() {
   const { state, filteredTasks: tasks, addTask, deleteTask, currentProfileId } = useCalendar();
@@ -202,22 +203,8 @@ export function MonthView() {
     ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
     : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-  // Helper function for color values
-  const getColorValue = (color: string): string => {
-    const colorMap: Record<string, string> = {
-      default: '#6b7280',
-      blue: '#3b82f6',
-      green: '#10b981',
-      yellow: '#f59e0b',
-      orange: '#f97316',
-      red: '#ef4444',
-      pink: '#ec4899',
-      purple: '#a855f7',
-      teal: '#14b8a6',
-      gray: '#6b7280',
-    };
-    return colorMap[color] || colorMap.default;
-  };
+  // Helper function for color values - uses shared color system
+  const getColorValue = (color: string): string => getTaskColor(color);
 
   return (
     <div className="flex flex-col h-full">

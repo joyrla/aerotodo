@@ -262,18 +262,19 @@ export function taskToGoogleEvent(task: Task): Partial<GoogleCalendarEvent> {
   }
 
   // Map task color to Google Calendar color ID
+  // Google Calendar color IDs: https://developers.google.com/calendar/api/v3/reference/colors
   const colorMap: Record<string, string> = {
-    blue: '1',
-    green: '2',
-    purple: '3',
-    red: '4',
-    yellow: '5',
-    orange: '6',
-    teal: '7',
-    gray: '8',
-    pink: '9',
+    red: '11',     // Tomato
+    orange: '6',   // Tangerine
+    yellow: '5',   // Banana
+    green: '10',   // Basil
+    teal: '7',     // Peacock
+    blue: '9',     // Blueberry
+    purple: '3',   // Grape
+    pink: '4',     // Flamingo
+    gray: '8',     // Graphite
   };
-  if (task.color && colorMap[task.color]) {
+  if (task.color && task.color !== 'default' && colorMap[task.color]) {
     event.colorId = colorMap[task.color];
   }
 
@@ -311,16 +312,19 @@ export function googleEventToTask(event: GoogleCalendarEvent, profileId?: string
   }
 
   // Map Google Calendar color ID to task color
+  // Full mapping of all 11 Google Calendar colors to our 9 colors
   const colorMap: Record<string, string> = {
-    '1': 'blue',
-    '2': 'green',
-    '3': 'purple',
-    '4': 'red',
-    '5': 'yellow',
-    '6': 'orange',
-    '7': 'teal',
-    '8': 'gray',
-    '9': 'pink',
+    '1': 'blue',     // Lavender → blue
+    '2': 'green',    // Sage → green
+    '3': 'purple',   // Grape → purple
+    '4': 'pink',     // Flamingo → pink
+    '5': 'yellow',   // Banana → yellow
+    '6': 'orange',   // Tangerine → orange
+    '7': 'teal',     // Peacock → teal
+    '8': 'gray',     // Graphite → gray
+    '9': 'blue',     // Blueberry → blue
+    '10': 'green',   // Basil → green
+    '11': 'red',     // Tomato → red
   };
   if (event.colorId && colorMap[event.colorId]) {
     task.color = colorMap[event.colorId] as Task['color'];
