@@ -297,11 +297,9 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
         )}
            style={{
              ...(isDragging && narrowOnDrag ? { width: '160px', maxWidth: '160px', minWidth: '160px' } : {}),
-             transform: isDragging 
-               ? `translateX(${translateX}px) rotate(2deg) scale(1.02)` 
-               : `translateX(${translateX}px)`,
+             ...(!isDragging && translateX !== 0 ? { transform: `translateX(${translateX}px)` } : {}),
              transition: isDragging 
-               ? 'box-shadow 0.15s ease-out'
+               ? 'none'
                : isDraggingSwipe.current 
                  ? 'none' 
                  : isDeleting 

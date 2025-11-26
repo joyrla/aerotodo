@@ -334,15 +334,14 @@ export function TaskList({ date, tasks, droppableId, enableDragDrop = true, show
                   {...provided.draggableProps}
                   className={cn(
                     justAdded && "pointer-events-none", 
-                    "touch-manipulation",
-                    snapshot.isDropAnimating && "task-dropping"
+                    "touch-manipulation"
                   )}
                   style={
                     snapshot.isDropAnimating
                       ? {
                         ...provided.draggableProps.style,
-                        transitionDuration: '0.12s',
-                        transitionTimingFunction: 'cubic-bezier(0.34, 1.56, 0.64, 1)'
+                        transitionDuration: '0.1s',
+                        transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)'
                       }
                       : provided.draggableProps.style
                   }
