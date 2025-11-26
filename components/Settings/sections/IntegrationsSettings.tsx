@@ -46,7 +46,7 @@ export function IntegrationsSettings() {
     loadCalendars,
   } = useGoogleCalendar();
   
-  const { tasks, updateTask, addTask } = useCalendar();
+  const { tasks, updateTask, addTask, projects, addProject } = useCalendar();
   const [showGcalSettings, setShowGcalSettings] = useState(true);
 
   // Load profiles from storage
@@ -247,7 +247,22 @@ export function IntegrationsSettings() {
                         <Label className="text-xs font-mono text-muted-foreground">Import to Profile</Label>
                         <Select
                           value={gcalSettings.profileId || 'none'}
-                          onValueChange={(value) => updateSettings({ profileId: value === 'none' ? undefined : value })}
+                          onValueChange={(value) => {
+                            const profileId = value === 'none' ? undefined : value;
+                            // Ensure the profile exists as a project (for FK constraints)
+                            if (profileId) {
+                              const profile = profiles.find(p => p.id === profileId);
+                              const projectExists = projects.some(p => p.id === profileId);
+                              if (profile && !projectExists) {
+                                addProject({
+                                  id: profile.id,
+                                  name: profile.name,
+                                  color: profile.color || 'default',
+                                });
+                              }
+                            }
+                            updateSettings({ profileId });
+                          }}
                         >
                           <SelectTrigger className="h-9 font-mono text-sm">
                             <SelectValue placeholder="No profile" />

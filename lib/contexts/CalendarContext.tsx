@@ -573,10 +573,11 @@ export function CalendarProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Project operations
-  const addProject = (projectData: Omit<Project, 'id' | 'createdAt'>) => {
+  const addProject = (projectData: Omit<Project, 'createdAt'> & { id?: string }) => {
     const newProject: Project = {
-      id: `project-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      ...projectData,
+      id: projectData.id || `project-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      name: projectData.name,
+      color: projectData.color,
       createdAt: new Date().toISOString(),
     };
     

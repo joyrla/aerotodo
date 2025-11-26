@@ -129,7 +129,7 @@ export interface CalendarContextType {
   deleteTask: (id: string) => void;
   moveTask: (taskId: string, newDate: string | null, destinationIndex?: number) => void;
   toggleTaskComplete: (id: string) => void;
-  addProject: (project: Omit<Project, 'id' | 'createdAt'>) => void;
+  addProject: (project: Omit<Project, 'createdAt'> & { id?: string }) => void;
   updateProject: (id: string, updates: Partial<Project>) => void;
   deleteProject: (id: string) => void;
   setViewMode: (mode: ViewMode) => void;
