@@ -778,7 +778,7 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
             <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
               <PopoverTrigger asChild>
                 <button className={cn(
-                  "inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-mono transition-all border",
+                  "inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-mono transition-all border",
                   task.date 
                     ? "bg-primary/8 text-primary border-primary/20 hover:bg-primary/12" 
                     : "bg-muted/40 text-muted-foreground border-transparent hover:bg-muted/60 hover:text-foreground"
@@ -801,7 +801,7 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
             <Popover>
               <PopoverTrigger asChild>
                 <button className={cn(
-                  "inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-mono transition-all border whitespace-nowrap",
+                  "inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-mono transition-all border whitespace-nowrap",
                   task.timeSlot 
                     ? "bg-orange-500/8 text-orange-600 border-orange-500/20 hover:bg-orange-500/12" 
                     : "bg-muted/40 text-muted-foreground border-transparent hover:bg-muted/60 hover:text-foreground"
@@ -1055,7 +1055,7 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
             <Popover>
               <PopoverTrigger asChild>
                 <button className={cn(
-                  "h-8 w-8 rounded-full flex items-center justify-center transition-all border",
+                  "h-8 w-8 rounded-md flex items-center justify-center transition-all border",
                   task.repeatPattern 
                     ? "bg-violet-500/10 text-violet-600 border-violet-500/20 hover:bg-violet-500/15" 
                     : "bg-muted/40 text-muted-foreground border-transparent hover:bg-muted/60 hover:text-foreground"
@@ -1086,7 +1086,7 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
             {/* Reminder - Coming Soon */}
             <button
               onClick={() => toast.info("Reminders are coming soon!")}
-              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-mono border border-transparent bg-muted/40 text-muted-foreground/50 hover:bg-muted/60 hover:text-muted-foreground transition-colors"
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-mono border border-transparent bg-muted/40 text-muted-foreground/50 hover:bg-muted/60 hover:text-muted-foreground transition-colors"
               title="Reminders coming soon"
             >
               <Bell className="w-3.5 h-3.5" />
@@ -1130,7 +1130,7 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
               }}
               disabled={isSyncingToGcal}
               className={cn(
-                "inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-mono border border-transparent transition-colors",
+                "inline-flex items-center gap-1.5 h-8 px-3 rounded-md text-xs font-mono border border-transparent transition-colors",
                 task.googleCalendarEventId
                   ? "bg-green-500/10 text-green-700 hover:bg-green-500/20"
                   : isGcalConnected
