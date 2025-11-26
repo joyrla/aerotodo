@@ -123,6 +123,7 @@ export interface CalendarContextType {
   projects: Project[];
   currentProfileId: string | null;
   setCurrentProfileId: (id: string | null) => void;
+  isLoading: boolean;
   addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Task;
   updateTask: (id: string, updates: Partial<Task>) => void;
   deleteTask: (id: string) => void;

@@ -17,6 +17,7 @@ import { useKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { GoogleCalendarSync } from '@/components/Calendar/GoogleCalendarSync';
 import { Calendar, ArrowRight } from 'lucide-react';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 
@@ -237,6 +238,7 @@ function CalendarContent() {
 
   return (
     <div className="h-screen flex flex-col bg-background overflow-visible" suppressHydrationWarning>
+      <GoogleCalendarSync />
       {/* Guest warning banner */}
       <GuestWarningBanner onSignUpClick={handleSignUpFromBanner} />
       

@@ -27,6 +27,7 @@ export function CalendarProvider({ children }: { children: React.ReactNode }) {
   const [currentDateStr, setCurrentDateStrState] = useState<string>(new Date().toISOString());
   const [timePresets, setTimePresets] = useState<TimePreset[]>(DEFAULT_TIME_PRESETS);
   const [currentProfileId, setCurrentProfileIdState] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const trashTimeoutsRef = React.useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   const [state, setState] = useState<CalendarState>({
@@ -199,6 +200,7 @@ export function CalendarProvider({ children }: { children: React.ReactNode }) {
         setTasksState(storedTasks);
         setProjectsState(storedProjects);
       }
+      setIsLoading(false);
     };
 
     loadData();
@@ -707,6 +709,7 @@ export function CalendarProvider({ children }: { children: React.ReactNode }) {
     filteredTasks,
     currentProfileId,
     setCurrentProfileId,
+    isLoading,
     addTask,
     updateTask,
     deleteTask,
