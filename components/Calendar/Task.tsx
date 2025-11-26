@@ -423,9 +423,9 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
                  {/* Color Options - Extension to the left */}
             <div
               className={cn(
-                     'flex items-center gap-1.5 transition-all duration-100 ease-out overflow-hidden',
+                     'flex items-center gap-1.5 transition-all duration-200 ease-out overflow-hidden',
                 showColorPicker 
-                       ? 'opacity-100 max-w-[200px] pointer-events-auto translate-x-0 pl-0.5 pr-2'
+                       ? 'opacity-100 max-w-[300px] pointer-events-auto translate-x-0 pl-1 pr-2'
                        : 'opacity-0 max-w-0 pointer-events-none -translate-x-2'
               )}
             >
@@ -439,9 +439,9 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
                         handleColorChange(color);
                       }}
                       className={cn(
-                          'w-5 h-5 rounded-full transition-all duration-150 ease-out flex items-center justify-center',
-                          'hover:scale-125',
-                        isSelected && 'scale-110 ring-2 ring-offset-1 ring-offset-background',
+                          'w-4 h-4 rounded-full transition-all duration-200 ease-out flex-shrink-0 flex items-center justify-center',
+                          'hover:scale-125 hover:shadow-sm',
+                        isSelected && 'scale-125 ring-1 ring-offset-1 ring-offset-background shadow-sm',
                       )}
                       style={{
                         backgroundColor: value,
@@ -451,7 +451,7 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
                     >
                         {isSelected && (
                         <Check 
-                          className="w-3 h-3 text-white drop-shadow-sm" 
+                          className="w-2.5 h-2.5 text-white drop-shadow-sm" 
                           strokeWidth={3}
                         />
                       )}
@@ -465,13 +465,13 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
                     handleColorChange('default');
                   }}
                   className={cn(
-                      'w-5 h-5 rounded-full transition-all duration-150 ease-out flex items-center justify-center',
-                      'hover:scale-125 border-2 border-dashed border-muted-foreground/40',
-                      task.color === 'default' && 'scale-110 ring-2 ring-offset-1 ring-offset-background ring-muted-foreground'
+                      'w-4 h-4 rounded-full transition-all duration-200 ease-out flex-shrink-0 flex items-center justify-center',
+                      'hover:scale-125 border border-dashed border-muted-foreground/40',
+                      task.color === 'default' && 'scale-125 ring-1 ring-offset-1 ring-offset-background ring-muted-foreground shadow-sm'
                   )}
                     title="No Color"
                 >
-                    {task.color === 'default' && <Check className="w-3 h-3 text-muted-foreground" strokeWidth={3} />}
+                    {task.color === 'default' && <Check className="w-2.5 h-2.5 text-muted-foreground" strokeWidth={3} />}
                 </button>
             </div>
 

@@ -81,16 +81,16 @@ export function ColorPicker({ selectedColor, onColorChange, children }: ColorPic
       {/* Color Grid Menu */}
       <div
         className={cn(
-          'absolute right-full top-1/2 -translate-y-1/2 mr-2',
-          'bg-background/95 backdrop-blur-xl border border-border rounded-xl shadow-lg',
-          'p-2',
-          'transition-all duration-200 ease-out',
+          'absolute right-full top-1/2 -translate-y-1/2 mr-3',
+          'bg-background/95 backdrop-blur-xl border border-border rounded-xl shadow-xl',
+          'p-3',
+          'transition-all duration-200 ease-out origin-right',
           isOpen
-            ? 'opacity-100 translate-x-0 pointer-events-auto'
-            : 'opacity-0 translate-x-4 pointer-events-none'
+            ? 'opacity-100 scale-100 pointer-events-auto'
+            : 'opacity-0 scale-95 pointer-events-none'
         )}
       >
-        <div className="grid grid-cols-2 gap-1.5">
+        <div className="grid grid-cols-5 gap-2">
           {colorOptions.map(({ color, value, label }) => {
             const isSelected = selectedColor === color;
             const isTransparent = value === 'transparent';
@@ -98,10 +98,10 @@ export function ColorPicker({ selectedColor, onColorChange, children }: ColorPic
               <button
                 key={color}
                 className={cn(
-                  'w-7 h-7 rounded-full transition-all duration-150 flex items-center justify-center',
-                  'hover:scale-110',
-                  isSelected && 'ring-2 ring-offset-2 ring-offset-background',
-                  isTransparent && 'border-2 border-dashed border-muted-foreground/40'
+                  'w-8 h-8 rounded-full transition-all duration-200 flex items-center justify-center',
+                  'hover:scale-110 hover:shadow-md',
+                  isSelected && 'ring-2 ring-offset-2 ring-offset-background shadow-sm',
+                  isTransparent && 'border-2 border-dashed border-muted-foreground/30'
                 )}
                 style={{
                   backgroundColor: isTransparent ? 'transparent' : value,
@@ -111,10 +111,10 @@ export function ColorPicker({ selectedColor, onColorChange, children }: ColorPic
                 title={label}
               >
                 {isSelected && !isTransparent && (
-                  <Check className="w-3.5 h-3.5 text-white drop-shadow-md" strokeWidth={3} />
+                  <Check className="w-4 h-4 text-white drop-shadow-md" strokeWidth={3} />
                 )}
                 {isTransparent && isSelected && (
-                  <Check className="w-3.5 h-3.5 text-muted-foreground" strokeWidth={3} />
+                  <Check className="w-4 h-4 text-muted-foreground" strokeWidth={3} />
                 )}
               </button>
             );
