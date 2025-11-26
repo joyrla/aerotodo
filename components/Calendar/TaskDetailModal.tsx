@@ -477,10 +477,10 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
                   <button
                     className={cn(
                       "w-7 h-7 rounded-md flex items-center justify-center transition-colors shrink-0",
-                      showMobileColorPicker && "bg-accent",
-                      task.color === 'default' && "bg-muted/40"
+                      showMobileColorPicker && task.color === 'default' && "bg-accent"
                     )}
                     style={{
+                      backgroundColor: task.color !== 'default' ? hexToRgba(getTaskColor(task.color), 0.15) : undefined,
                       color: task.color !== 'default' ? getTaskColor(task.color) : undefined
                     }}
                   >
@@ -997,9 +997,10 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
                     task.color !== 'default'
                       ? "border-transparent hover:bg-accent"
                       : "bg-muted/40 border-transparent hover:bg-muted/60",
-                    showDesktopColorPicker && "ring-2 ring-primary/20"
+                    showDesktopColorPicker && task.color === 'default' && "ring-2 ring-primary/20"
                   )}
                   style={{
+                    backgroundColor: task.color !== 'default' ? hexToRgba(getTaskColor(task.color), 0.15) : undefined,
                     color: task.color !== 'default' ? getTaskColor(task.color) : undefined
                   }}
                 >

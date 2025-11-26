@@ -418,10 +418,10 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
                           'w-6 h-6 flex items-center justify-center rounded-md transition-all duration-200',
                           'text-muted-foreground hover:text-foreground',
                           'hover:bg-accent hover:scale-110',
-                          hasColor && 'text-foreground/80',
-                          showColorPicker && 'bg-accent'
+                          showColorPicker && !hasColor && 'bg-accent'
                         )}
                         style={{
+                          backgroundColor: hasColor ? hexToRgba(colorValue, 0.15) : undefined,
                           color: hasColor ? colorValue : undefined,
                         }}
                         title="Highlight"

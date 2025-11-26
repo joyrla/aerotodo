@@ -120,13 +120,30 @@ export function applyTheme(themeName: ThemeName, mode: 'light' | 'dark' = 'light
   });
 }
 
+export type Radius = '0' | '0.25' | '0.5' | '0.75' | '1.0';
+
+export function applyRadius(radius: string) {
+  const root = document.documentElement;
+  root.style.setProperty('--radius', `${radius}rem`);
+}
+
 export function getCurrentTheme(): ThemeName {
   if (typeof window === 'undefined') return 'mint';
   return (localStorage.getItem('aerotodo_theme') as ThemeName) || 'mint';
 }
 
+export function getCurrentRadius(): string {
+  if (typeof window === 'undefined') return '0.25';
+  return localStorage.getItem('aerotodo_radius') || '0.25';
+}
+
 export function saveTheme(themeName: ThemeName) {
   if (typeof window === 'undefined') return;
   localStorage.setItem('aerotodo_theme', themeName);
+}
+
+export function saveRadius(radius: string) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem('aerotodo_radius', radius);
 }
 

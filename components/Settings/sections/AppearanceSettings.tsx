@@ -3,16 +3,18 @@
 import { useState, useEffect } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { themes, applyTheme, getCurrentTheme, saveTheme, ThemeName } from '@/lib/utils/themes';
+import { themes, applyTheme, getCurrentTheme, saveTheme, ThemeName, applyRadius, getCurrentRadius, saveRadius } from '@/lib/utils/themes';
 import { useSettings } from '@/lib/contexts/SettingsContext';
 import { SettingsSection } from '../SettingsSection';
 
 export function AppearanceSettings() {
   const { preferences, updatePreferences } = useSettings();
   const [selectedTheme, setSelectedTheme] = useState<ThemeName>('default');
+  const [selectedRadius, setSelectedRadius] = useState('0.25');
 
   useEffect(() => {
     setSelectedTheme(getCurrentTheme());
+    setSelectedRadius(getCurrentRadius());
   }, []);
 
   const handleThemeChange = (themeName: ThemeName) => {
@@ -21,6 +23,12 @@ export function AppearanceSettings() {
     
     const isDark = document.documentElement.classList.contains('dark');
     applyTheme(themeName, isDark ? 'dark' : 'light');
+  };
+
+  const handleRadiusChange = (value: string) => {
+    setSelectedRadius(value);
+    saveRadius(value);
+    applyRadius(value);
   };
 
   const handleDefaultViewChange = (value: string) => {
@@ -55,6 +63,24 @@ export function AppearanceSettings() {
           </Select>
           <p className="text-xs text-muted-foreground font-mono">
             Choose your preferred color scheme. More themes coming soon.
+          </p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="radius-select" className="text-sm font-mono">
+            Theme Shape
+          </Label>
+          <Select value={selectedRadius} onValueChange={handleRadiusChange}>
+            <SelectTrigger id="radius-select" className="font-mono">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="0.25" className="font-mono">Squared</SelectItem>
+              <SelectItem value="0.75" className="font-mono">Rounded</SelectItem>
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground font-mono">
+            Choose between squared or rounded UI elements.
           </p>
         </div>
 
