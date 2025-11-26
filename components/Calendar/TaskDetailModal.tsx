@@ -50,6 +50,30 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
   const [selectedDateForNavigation, setSelectedDateForNavigation] = useState<Date | null>(null);
   const [optimisticSubtaskStates, setOptimisticSubtaskStates] = useState<Record<string, boolean | null>>({});
   const [showMobileDatePicker, setShowMobileDatePicker] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const mediaQuery = window.matchMedia('(min-width: 768px)');
+    const updateMatch = () => setIsDesktop(mediaQuery.matches);
+
+    updateMatch();
+
+    if (mediaQuery.addEventListener) {
+      mediaQuery.addEventListener('change', updateMatch);
+    } else {
+      mediaQuery.addListener(updateMatch);
+    }
+
+    return () => {
+      if (mediaQuery.removeEventListener) {
+        mediaQuery.removeEventListener('change', updateMatch);
+      } else {
+        mediaQuery.removeListener(updateMatch);
+      }
+    };
+  }, []);
+
 
   // Refs for inputs to capture values on close
   const titleInputRef = useRef<HTMLInputElement>(null);
@@ -224,7 +248,7 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
       <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent 
         showCloseButton={false}
-        mobileSheet={true}
+        mobileSheet={!isDesktop}
         mobilePosition="bottom"
         className="w-full sm:max-w-2xl bg-background border-border/50 p-0 gap-0 overflow-hidden backface-hidden"
         onOpenAutoFocus={(e) => {
