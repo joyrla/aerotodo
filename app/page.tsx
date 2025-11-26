@@ -257,7 +257,7 @@ function CalendarContent() {
         )} suppressHydrationWarning>
           {state.viewMode === 'week' && <div className="animate-fade-in"><WeekView viewMode={weekViewMode} /></div>}
           {state.viewMode === 'day' && <div className="animate-fade-in"><DayView /></div>}
-          {state.viewMode === 'month' && <div className="animate-fade-in"><MonthView /></div>}
+          {state.viewMode === 'month' && <div className="animate-fade-in h-full"><MonthView /></div>}
         </div>
       </div>
       
