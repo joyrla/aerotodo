@@ -149,9 +149,9 @@ export function RecentActivityModule({ config }: ModuleComponentProps) {
                 key={activity.id}
                 className={cn(
                   "group relative flex items-center gap-3 p-2.5 rounded-lg",
-                  "bg-card/50 backdrop-blur-sm",
+                  "bg-foreground/[0.03] shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
                   "transition-all duration-200 ease-out",
-                  "hover:bg-accent/40 hover:shadow-sm"
+                  "hover:bg-foreground/[0.06] hover:shadow-[0_2px_4px_rgba(0,0,0,0.06)]"
                 )}
               >
                 <div className={cn(

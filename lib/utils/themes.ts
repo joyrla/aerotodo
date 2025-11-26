@@ -121,8 +121,8 @@ export function applyTheme(themeName: ThemeName, mode: 'light' | 'dark' = 'light
 }
 
 export function getCurrentTheme(): ThemeName {
-  if (typeof window === 'undefined') return 'default';
-  return (localStorage.getItem('aerotodo_theme') as ThemeName) || 'default';
+  if (typeof window === 'undefined') return 'mint';
+  return (localStorage.getItem('aerotodo_theme') as ThemeName) || 'mint';
 }
 
 export function saveTheme(themeName: ThemeName) {

@@ -275,7 +275,7 @@ export function TaskList({ date, tasks, droppableId, enableDragDrop = true, show
           className={cn(
             "group min-h-[36px] py-2 px-3 rounded-lg transition-all flex items-start cursor-text",
             isAdding || newTaskTitle
-              ? "bg-card/50 backdrop-blur-sm hover:bg-accent/40 hover:shadow-sm opacity-100"
+              ? "bg-foreground/[0.03] shadow-[0_1px_2px_rgba(0,0,0,0.04)] hover:bg-foreground/[0.06] opacity-100"
               : "bg-muted/20 hover:bg-muted/30 opacity-60 hover:opacity-80"
           )}
           onClick={() => {
@@ -359,7 +359,7 @@ export function TaskList({ date, tasks, droppableId, enableDragDrop = true, show
             className={cn(
               "group min-h-[36px] py-2 px-3 rounded-lg transition-all flex items-start cursor-text",
               isAdding || newTaskTitle
-                ? "bg-card/50 backdrop-blur-sm hover:bg-accent/40 hover:shadow-sm opacity-100"
+                ? "bg-foreground/[0.03] shadow-[0_1px_2px_rgba(0,0,0,0.04)] hover:bg-foreground/[0.06] opacity-100"
                 : "bg-muted/20 hover:bg-muted/30 opacity-60 hover:opacity-80"
             )}
             onClick={() => {

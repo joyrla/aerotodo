@@ -286,11 +286,11 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
         className={cn(
              'group/task relative cursor-pointer min-h-[44px] md:min-h-[36px] select-none',
              'py-2.5 md:py-2 px-3 rounded-lg',
-             'bg-card/50 backdrop-blur-sm',
+             'bg-foreground/[0.03] shadow-[0_1px_2px_rgba(0,0,0,0.04)]',
              'md:overflow-hidden',
              'md:active:scale-100',
              !showSwipeAction && 'active:scale-[0.98]',
-             !isDragging && !showSwipeAction && 'hover:bg-accent/40 hover:shadow-sm',
+             !isDragging && !showSwipeAction && 'hover:bg-foreground/[0.06] hover:shadow-[0_2px_4px_rgba(0,0,0,0.06)]',
              isDragging
                ? 'shadow-xl ring-1 ring-border/50 bg-background z-50 scale-[1.02]'
                : '',
