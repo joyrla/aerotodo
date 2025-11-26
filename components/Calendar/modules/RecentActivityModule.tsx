@@ -180,7 +180,7 @@ export function RecentActivityModule({ config }: ModuleComponentProps) {
                   "flex items-center gap-1 absolute right-2 top-1/2 -translate-y-1/2",
                   "transition-all duration-[250ms] ease-out",
                   "opacity-0 translate-x-2 group-hover:opacity-100 group-hover:translate-x-0",
-                  "bg-background rounded-md shadow-sm py-0.5 px-1"
+                  "bg-background rounded-lg shadow-sm p-1"
                 )}>
                   {/* Undo Button */}
                   {activity.data && (activity.type !== 'updated') && (

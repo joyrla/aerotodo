@@ -291,8 +291,8 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
           {...dragHandleProps}
           data-narrow-drag={isDragging && narrowOnDrag ? 'true' : undefined}
           className={cn(
-            'group/task relative cursor-pointer min-h-[44px] md:min-h-[36px] select-none touch-manipulation',
-            'py-2.5 md:py-2 px-3 rounded-lg',
+            'group/task relative cursor-pointer select-none touch-manipulation',
+            'p-2.5 rounded-lg',
             'bg-foreground/[0.03] shadow-[0_1px_2px_rgba(0,0,0,0.04)]',
             'md:active:scale-100',
             !showSwipeAction && !isDragging && 'active:scale-[0.98]',
