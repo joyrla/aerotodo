@@ -284,27 +284,29 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
         {...dragHandleProps}
         data-narrow-drag={isDragging && narrowOnDrag ? 'true' : undefined}
         className={cn(
-             'group/task relative cursor-pointer min-h-[44px] md:min-h-[36px] select-none',
+             'group/task relative cursor-pointer min-h-[44px] md:min-h-[36px] select-none touch-manipulation',
              'py-2.5 md:py-2 px-3 rounded-lg',
              'bg-foreground/[0.03] shadow-[0_1px_2px_rgba(0,0,0,0.04)]',
              'md:overflow-hidden',
              'md:active:scale-100',
-             !showSwipeAction && 'active:scale-[0.98]',
+             !showSwipeAction && !isDragging && 'active:scale-[0.98]',
              !isDragging && !showSwipeAction && 'hover:bg-foreground/[0.06] hover:shadow-[0_2px_4px_rgba(0,0,0,0.06)]',
-             isDragging
-               ? 'shadow-xl ring-1 ring-border/50 bg-background z-50 scale-[1.02]'
-               : '',
+             isDragging && 'task-dragging',
              displayCompleted && !isDragging && 'opacity-50',
              isDragging && narrowOnDrag && 'task-narrow-drag'
         )}
            style={{
              ...(isDragging && narrowOnDrag ? { width: '160px', maxWidth: '160px', minWidth: '160px' } : {}),
-             transform: `translateX(${translateX}px)`,
-             transition: isDraggingSwipe.current 
-               ? 'none' 
-               : isDeleting 
-                 ? 'transform 150ms ease-out' 
-                 : 'transform 250ms cubic-bezier(0.25, 0.1, 0.25, 1)',
+             transform: isDragging 
+               ? `translateX(${translateX}px) rotate(2deg) scale(1.02)` 
+               : `translateX(${translateX}px)`,
+             transition: isDragging 
+               ? 'box-shadow 0.15s ease-out'
+               : isDraggingSwipe.current 
+                 ? 'none' 
+                 : isDeleting 
+                   ? 'transform 150ms ease-out' 
+                   : 'transform 200ms cubic-bezier(0.25, 0.1, 0.25, 1)',
            }}
         onClick={handleEdit}
         onDoubleClick={handleDoubleClick}

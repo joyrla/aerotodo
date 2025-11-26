@@ -332,13 +332,17 @@ export function TaskList({ date, tasks, droppableId, enableDragDrop = true, show
                 <div
                   ref={provided.innerRef}
                   {...provided.draggableProps}
-                  className={cn(justAdded && "pointer-events-none")}
+                  className={cn(
+                    justAdded && "pointer-events-none", 
+                    "touch-manipulation",
+                    snapshot.isDropAnimating && "task-dropping"
+                  )}
                   style={
                     snapshot.isDropAnimating
                       ? {
                         ...provided.draggableProps.style,
-                        transitionDuration: '0.15s',
-                        transitionTimingFunction: 'cubic-bezier(0.1, 1, 0.1, 1)'
+                        transitionDuration: '0.12s',
+                        transitionTimingFunction: 'cubic-bezier(0.34, 1.56, 0.64, 1)'
                       }
                       : provided.draggableProps.style
                   }

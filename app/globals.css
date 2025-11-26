@@ -586,3 +586,63 @@ body {
 .hover-lift:hover {
   transform: translateY(-2px) translateZ(0);
 }
+
+/* Drag and Drop - Snappy & Responsive */
+[data-rfd-draggable-context-id] {
+  touch-action: manipulation;
+}
+
+[data-rfd-drag-handle-draggable-id] {
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+[data-rfd-draggable-id][data-rfd-draggable-context-id] {
+  will-change: transform;
+}
+
+[data-rfd-placeholder-context-id] {
+  transition: height 0.12s ease-out !important;
+}
+
+/* Task Dragging - Any.do style "lift & tilt" effect */
+.task-dragging {
+  z-index: 9999 !important;
+  background: var(--background) !important;
+  box-shadow: 
+    0 8px 24px -4px rgba(0, 0, 0, 0.15),
+    0 4px 8px -2px rgba(0, 0, 0, 0.1),
+    0 0 0 1px rgba(0, 0, 0, 0.05) !important;
+  border-radius: 0.5rem;
+  animation: task-lift 0.15s cubic-bezier(0.2, 0, 0, 1) forwards;
+}
+
+@keyframes task-lift {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Smooth drop animation */
+[data-rfd-draggable-id] {
+  transition: transform 0.12s cubic-bezier(0.2, 1, 0.2, 1);
+}
+
+/* When being dropped, animate back to position */
+.task-dropping {
+  animation: task-drop 0.15s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes task-drop {
+  0% {
+    transform: rotate(2deg) scale(1.02);
+  }
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+}
