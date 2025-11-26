@@ -253,7 +253,7 @@ function CalendarContent() {
       )} suppressHydrationWarning>
         <div className={cn(
           "max-w-[1800px] mx-auto overflow-visible",
-          state.viewMode === 'month' ? "h-full p-4 md:p-6" : "px-3 py-4 sm:px-6 sm:py-6"
+          state.viewMode === 'month' ? "h-full p-4 md:p-6 pb-8 md:pb-10" : "px-3 py-4 sm:px-6 sm:py-6"
         )} suppressHydrationWarning>
           {state.viewMode === 'week' && <div className="animate-fade-in"><WeekView viewMode={weekViewMode} /></div>}
           {state.viewMode === 'day' && <div className="animate-fade-in"><DayView /></div>}
