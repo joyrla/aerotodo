@@ -4,20 +4,11 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Task as TaskType, TaskColor } from '@/types';
 import { useCalendar } from '@/lib/contexts/CalendarContext';
 import { TaskDetailModal } from './TaskDetailModal';
-import { Trash2, Check, Palette, MoreHorizontal } from 'lucide-react';
+import { Trash2, Palette, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { TASK_COLORS, getTaskColor, ColorPicker } from '@/components/ui/color-picker';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-} from '@/components/ui/dropdown-menu';
+import { TASK_COLORS, getTaskColor } from '@/components/ui/color-picker';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface TaskProps {
   task: TaskType;
@@ -36,7 +27,7 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
   const [optimisticCompleted, setOptimisticCompleted] = useState<boolean | null>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   // Swipe state for mobile
   const [translateX, setTranslateX] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -58,10 +49,8 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
     });
   }, [task, deleteTask, addTask]);
 
-  // Use optimistic state if available
   const displayCompleted = optimisticCompleted !== null ? optimisticCompleted : task.completed;
 
-  // Sync optimistic state with actual task state
   useEffect(() => {
     if (optimisticCompleted !== null && optimisticCompleted === task.completed) {
       setOptimisticCompleted(null);
@@ -70,7 +59,6 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
 
   const handleClick = (e: React.MouseEvent) => {
     if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
-
     clickTimeoutRef.current = setTimeout(() => {
       const target = e.target as HTMLElement;
       if (!isEditing && !target.closest('button') && !target.closest('input')) {
@@ -131,7 +119,6 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
     updateTask(task.id, { color });
   };
 
-  // Convert hex to rgba
   const hexToRgba = (hex: string, opacity: number): string => {
     const r = parseInt(hex.slice(1, 3), 16);
     const g = parseInt(hex.slice(3, 5), 16);
@@ -188,6 +175,9 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
   const hasColor = task.color && task.color !== 'default';
   const colorValue = getTaskColor(task.color);
 
+  // Color grid for popover
+  const colorGrid: TaskColor[] = ['default', 'red', 'yellow', 'orange', 'green', 'teal', 'blue', 'purple', 'pink', 'gray'];
+
   return (
     <>
       {/* Swipe Container */}
@@ -235,9 +225,7 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
           {hasColor && (
             <div
               className="absolute inset-0 rounded-lg"
-              style={{
-                backgroundColor: hexToRgba(colorValue, 0.12),
-              }}
+              style={{ backgroundColor: hexToRgba(colorValue, 0.12) }}
             />
           )}
 
@@ -305,92 +293,113 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
 
             {/* Right Content (e.g., Overdue Badge) */}
             {rightContent && (
-              <div className={cn('flex-shrink-0 transition-opacity duration-200', 'md:group-hover/task:opacity-0', showSwipeAction && 'opacity-0')}>{rightContent}</div>
+              <div className={cn(
+                'flex-shrink-0 transition-opacity duration-200',
+                'md:group-hover/task:opacity-0',
+                showColorPicker && 'md:opacity-0',
+                showSwipeAction && 'opacity-0'
+              )}>
+                {rightContent}
+              </div>
             )}
 
-            {/* Desktop Actions - Clean hover reveal */}
+            {/* Desktop: Hover Actions - Sliding pill with Palette + Trash */}
             {!(isDragging && narrowOnDrag) && (
-              <div className={cn('hidden md:flex items-center gap-1', 'opacity-0 group-hover/task:opacity-100 transition-opacity duration-150')}>
-                {/* Color Picker Trigger */}
-                <ColorPicker selectedColor={task.color || 'default'} onColorChange={handleColorChange} open={showColorPicker} onOpenChange={setShowColorPicker} side="bottom" align="end">
+              <div
+                className={cn(
+                  'absolute right-1 top-1/2 -translate-y-1/2 flex items-center pointer-events-none',
+                  'hidden md:flex'
+                )}
+              >
+                <div className={cn(
+                  'relative flex items-center transition-all duration-[250ms] ease-out pointer-events-auto',
+                  'opacity-0 translate-x-2 group-hover/task:opacity-100 group-hover/task:translate-x-0',
+                  'rounded-md bg-background shadow-sm py-0.5 gap-0.5 pr-1 pl-1'
+                )}>
+                  {/* Highlight Button with Popover */}
+                  <Popover open={showColorPicker} onOpenChange={setShowColorPicker}>
+                    <PopoverTrigger asChild>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowColorPicker(true);
+                        }}
+                        className={cn(
+                          'w-6 h-6 flex items-center justify-center rounded transition-all duration-200',
+                          'text-muted-foreground hover:text-foreground',
+                          'hover:bg-accent hover:scale-110',
+                          hasColor && 'text-foreground/80',
+                          showColorPicker && 'bg-accent'
+                        )}
+                        style={{
+                          color: hasColor ? colorValue : undefined,
+                        }}
+                        title="Highlight"
+                      >
+                        <Palette className="w-3.5 h-3.5" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      side="bottom"
+                      align="end"
+                      className="w-auto p-2.5 rounded-xl shadow-lg border-border/50"
+                      sideOffset={4}
+                    >
+                      {/* Compact 3x4 color grid */}
+                      <div className="grid grid-cols-3 gap-2">
+                        {colorGrid.map((color) => {
+                          const isSelected = (task.color || 'default') === color;
+                          const isDefault = color === 'default';
+                          const value = TASK_COLORS[color];
+
+                          return (
+                            <button
+                              key={color}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleColorChange(color);
+                              }}
+                              className={cn(
+                                'w-8 h-8 rounded-full transition-all duration-150',
+                                'hover:scale-110 active:scale-95',
+                                'focus:outline-none',
+                                isSelected && 'ring-2 ring-offset-2 ring-offset-popover',
+                                isDefault && 'border-2 border-dashed border-muted-foreground/30'
+                              )}
+                              style={{
+                                backgroundColor: isDefault ? 'transparent' : value,
+                                ['--tw-ring-color' as string]: isDefault ? 'hsl(var(--muted-foreground))' : value,
+                              }}
+                            >
+                              {isSelected && (
+                                <Check
+                                  className={cn('w-4 h-4 m-auto drop-shadow-sm', isDefault ? 'text-muted-foreground' : 'text-white')}
+                                  strokeWidth={3}
+                                />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+
+                  {/* Delete Button */}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      setShowColorPicker(true);
+                      handleDelete();
                     }}
                     className={cn(
-                      'w-7 h-7 rounded-md flex items-center justify-center',
-                      'transition-all duration-150',
-                      'hover:bg-accent hover:scale-105 active:scale-95'
+                      'w-6 h-6 flex items-center justify-center rounded transition-all duration-200',
+                      'text-muted-foreground hover:text-destructive',
+                      'hover:bg-accent hover:scale-110'
                     )}
-                    title="Color"
+                    title="Delete"
                   >
-                    {hasColor ? (
-                      <div className="w-4 h-4 rounded-full shadow-sm" style={{ backgroundColor: colorValue }} />
-                    ) : (
-                      <Palette className="w-4 h-4 text-muted-foreground" />
-                    )}
+                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
-                </ColorPicker>
-
-                {/* More Menu */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      onClick={(e) => e.stopPropagation()}
-                      className={cn(
-                        'w-7 h-7 rounded-md flex items-center justify-center',
-                        'transition-all duration-150',
-                        'hover:bg-accent hover:scale-105 active:scale-95',
-                        'text-muted-foreground'
-                      )}
-                      title="More options"
-                    >
-                      <MoreHorizontal className="w-4 h-4" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="min-w-[160px]">
-                    {/* Color Submenu */}
-                    <DropdownMenuSub>
-                      <DropdownMenuSubTrigger>
-                        <Palette className="w-4 h-4 mr-2" />
-                        Color
-                      </DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent className="p-2">
-                        <div className="grid grid-cols-3 gap-2">
-                          {(['default', 'red', 'yellow', 'orange', 'green', 'teal', 'blue', 'purple', 'pink', 'gray'] as TaskColor[]).map((color) => {
-                            const isSelected = (task.color || 'default') === color;
-                            const isDefault = color === 'default';
-                            const value = TASK_COLORS[color];
-                            return (
-                              <button
-                                key={color}
-                                onClick={() => handleColorChange(color)}
-                                className={cn(
-                                  'w-7 h-7 rounded-full transition-all duration-150',
-                                  'hover:scale-110 active:scale-95',
-                                  isSelected && 'ring-2 ring-offset-2 ring-offset-popover',
-                                  isDefault && 'border-2 border-dashed border-muted-foreground/40'
-                                )}
-                                style={{
-                                  backgroundColor: isDefault ? 'transparent' : value,
-                                  ['--tw-ring-color' as string]: isDefault ? 'hsl(var(--muted-foreground))' : value,
-                                }}
-                              >
-                                {isSelected && <Check className={cn('w-3 h-3 m-auto', isDefault ? 'text-muted-foreground' : 'text-white')} strokeWidth={3} />}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </DropdownMenuSubContent>
-                    </DropdownMenuSub>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleDelete} className="text-destructive focus:text-destructive">
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                </div>
               </div>
             )}
           </div>

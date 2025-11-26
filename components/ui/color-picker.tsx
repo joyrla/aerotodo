@@ -10,23 +10,20 @@ import {
 } from '@/components/ui/popover';
 
 /**
- * Color palette mapped 1-to-1 with Google Calendar colors
- * Google Calendar IDs → Our color names:
- * 1 (Lavender) → blue, 2 (Sage) → green, 3 (Grape) → purple,
- * 4 (Flamingo) → pink, 5 (Banana) → yellow, 6 (Tangerine) → orange,
- * 7 (Peacock) → teal, 8 (Graphite) → gray, 11 (Tomato) → red
+ * Task highlight colors - vibrant, saturated colors that look good as highlights
+ * These are the actual colors used for task backgrounds (at ~12% opacity)
  */
 export const TASK_COLORS: Record<TaskColor, string> = {
-  default: '#9ca3af',
-  red: '#d93025',
-  orange: '#f4511e',
-  yellow: '#f6bf26',
-  green: '#0d9488',
-  teal: '#039be5',
-  blue: '#4285f4',
-  purple: '#7c3aed',
-  pink: '#e91e63',
-  gray: '#5f6368',
+  default: '#9ca3af',  // Gray placeholder
+  red: '#dc2626',      // Vibrant red
+  orange: '#ea580c',   // Warm orange
+  yellow: '#eab308',   // Golden yellow
+  green: '#16a34a',    // Fresh green
+  teal: '#0891b2',     // Cyan teal
+  blue: '#2563eb',     // Strong blue
+  purple: '#7c3aed',   // Rich purple
+  pink: '#db2777',     // Hot pink
+  gray: '#6b7280',     // Neutral gray
 };
 
 /** Get the hex color value for a TaskColor */
@@ -34,11 +31,7 @@ export function getTaskColor(color: TaskColor | string): string {
   return TASK_COLORS[color as TaskColor] || TASK_COLORS.default;
 }
 
-// Color grid layout - organized for visual appeal
-// Row 1: No color, Red, Yellow
-// Row 2: Orange, Green, Teal
-// Row 3: Blue, Purple, Pink
-// + Gray at bottom
+// Color grid layout for the picker
 const colorGrid: Array<{ color: TaskColor; label: string }> = [
   { color: 'default', label: 'No color' },
   { color: 'red', label: 'Red' },
@@ -69,7 +62,7 @@ export function ColorPicker({
   onOpenChange,
   children,
   side = 'bottom',
-  align = 'start',
+  align = 'end',
 }: ColorPickerProps) {
   const handleColorSelect = (color: TaskColor) => {
     onColorChange(color);
@@ -84,11 +77,11 @@ export function ColorPicker({
       <PopoverContent
         side={side}
         align={align}
-        className="w-auto p-3 shadow-xl border-border/50 bg-popover/95 backdrop-blur-xl rounded-2xl"
-        sideOffset={8}
+        className="w-auto p-2.5 shadow-lg border-border/50 rounded-xl"
+        sideOffset={4}
       >
-        {/* 3x4 grid of color circles - 10 colors, 2 empty slots hidden */}
-        <div className="grid grid-cols-3 gap-3">
+        {/* Compact 3x4 grid */}
+        <div className="grid grid-cols-3 gap-2">
           {colorGrid.map(({ color, label }) => {
             const isSelected = selectedColor === color;
             const isDefault = color === 'default';
@@ -99,11 +92,11 @@ export function ColorPicker({
                 key={color}
                 onClick={() => handleColorSelect(color)}
                 className={cn(
-                  'relative w-9 h-9 rounded-full transition-all duration-150',
+                  'w-8 h-8 rounded-full transition-all duration-150',
                   'hover:scale-110 active:scale-95',
-                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                  'focus:outline-none',
                   isSelected && 'ring-2 ring-offset-2 ring-offset-popover',
-                  isDefault && 'border-2 border-dashed border-muted-foreground/40'
+                  isDefault && 'border-2 border-dashed border-muted-foreground/30'
                 )}
                 style={{
                   backgroundColor: isDefault ? 'transparent' : colorValue,
@@ -115,7 +108,7 @@ export function ColorPicker({
                 {isSelected && (
                   <Check
                     className={cn(
-                      'absolute inset-0 m-auto w-4 h-4 drop-shadow-sm',
+                      'w-4 h-4 m-auto drop-shadow-sm',
                       isDefault ? 'text-muted-foreground' : 'text-white'
                     )}
                     strokeWidth={3}
