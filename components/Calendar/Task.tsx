@@ -402,7 +402,7 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
                 <div className={cn(
                   'relative flex items-center transition-all duration-[250ms] ease-out pointer-events-auto',
                   'opacity-0 translate-x-2 group-hover/task:opacity-100 group-hover/task:translate-x-0',
-                  'rounded-md bg-background shadow-sm py-0.5 gap-0.5 pr-1 pl-1',
+                  'rounded-lg bg-background shadow-sm p-1 gap-1',
                   // Keep visible when color picker is open
                   showColorPicker && 'opacity-100 translate-x-0'
                 )}>
