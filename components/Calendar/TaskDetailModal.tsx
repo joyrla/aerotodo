@@ -18,13 +18,18 @@ import { format } from 'date-fns';
 import { storage } from '@/lib/utils/storage';
 import { toast } from 'sonner';
 
-// Modern, minimal color palette
-const colorOptions: Array<{ color: TaskColor; value: string; pastelValue: string; label: string }> = [
-  { color: 'blue', value: '#3b82f6', pastelValue: 'rgba(59, 130, 246, 0.12)', label: 'Blue' },
-  { color: 'green', value: '#10b981', pastelValue: 'rgba(16, 185, 129, 0.12)', label: 'Green' },
-  { color: 'yellow', value: '#f59e0b', pastelValue: 'rgba(245, 158, 11, 0.12)', label: 'Yellow' },
-  { color: 'red', value: '#ef4444', pastelValue: 'rgba(239, 68, 68, 0.12)', label: 'Red' },
-];
+import { TASK_COLORS, getTaskColor } from '@/components/ui/color-picker';
+
+// Color grid matching the shared TASK_COLORS - all 10 colors
+const colorGrid: TaskColor[] = ['red', 'pink', 'orange', 'yellow', 'green', 'teal', 'blue', 'purple', 'gray'];
+
+// Helper to convert hex to rgba
+const hexToRgba = (hex: string, opacity: number): string => {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+};
 
 const repeatOptions: Array<{ value: RepeatPattern; label: string; icon?: string }> = [
   { value: null, label: 'No repeat', icon: '✕' },
@@ -91,7 +96,6 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
   const titleInputRef = useRef<HTMLInputElement>(null);
   const notesTextareaRef = useRef<HTMLTextAreaElement>(null);
   const subtaskInputRef = useRef<HTMLInputElement>(null);
-  const desktopColorPickerRef = useRef<HTMLDivElement>(null);
   const currentTitleRef = useRef<string>(title);
   const currentNotesRef = useRef<string>(notes);
   const currentSubtaskRef = useRef<string>(newSubtask);
@@ -107,21 +111,6 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
     setNotes(task.notes || '');
   }, [task.id, task.title, task.notes]);
 
-  // Handle click outside for color picker (Desktop only)
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node;
-      const desktopContains = desktopColorPickerRef.current?.contains(target);
-      if (!desktopContains) {
-        setShowDesktopColorPicker(false);
-      }
-    };
-
-    if (showDesktopColorPicker) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [showDesktopColorPicker]);
 
   // Overlap Detection
   const checkOverlap = (newStart: string, newEnd: string) => {
@@ -495,29 +484,27 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
                     )}
                     style={{
                       backgroundColor: task.color !== 'default'
-                        ? colorOptions.find(c => c.color === task.color)?.pastelValue
+                        ? hexToRgba(getTaskColor(task.color), 0.15)
                         : undefined
                     }}
                   >
-                    <Palette
-                      className="w-3 h-3"
-                      style={{ color: task.color !== 'default'
-                        ? colorOptions.find(c => c.color === task.color)?.value
-                        : 'hsl(var(--muted-foreground))' }}
-                    />
+                    {task.color !== 'default' ? (
+                      <div className="w-3.5 h-3.5 rounded-full" style={{ backgroundColor: getTaskColor(task.color) }} />
+                    ) : (
+                      <Palette className="w-3 h-3 text-muted-foreground" />
+                    )}
                   </button>
                 </PopoverTrigger>
                 <PopoverContent 
                   align="start" 
                   side="bottom" 
-                  className={cn(
-                    "w-auto py-1 px-1.5",
-                    "rounded-md bg-background shadow-sm border-none"
-                  )}
+                  className="w-auto p-2 rounded-xl shadow-lg"
+                  sideOffset={6}
                 >
-                  <div className="flex items-center gap-1">
-                    {colorOptions.map(({ color, pastelValue, value, label }, index) => {
+                  <div className="grid grid-cols-5 gap-2">
+                    {colorGrid.map((color) => {
                       const isSelected = task.color === color;
+                      const value = getTaskColor(color);
                       return (
                         <button
                           key={color}
@@ -526,18 +513,16 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
                             setShowMobileColorPicker(false);
                           }}
                           className={cn(
-                            "w-5 h-5 rounded transition-all duration-100 flex items-center justify-center shrink-0",
-                            "hover:scale-110 active:scale-90",
-                            isSelected && "scale-110",
-                            "animate-in zoom-in-50 fade-in-0 slide-in-from-top-2 duration-200"
+                            "w-7 h-7 rounded-full transition-all duration-150 flex items-center justify-center",
+                            "hover:scale-110 active:scale-95",
+                            isSelected && "ring-2 ring-offset-2 ring-offset-popover"
                           )}
                           style={{ 
-                            backgroundColor: pastelValue,
-                            animationDelay: `${index * 30}ms`,
-                            animationFillMode: 'backwards'
+                            backgroundColor: value,
+                            ['--tw-ring-color' as string]: value,
                           }}
-                          title={label}
                         >
+                          {isSelected && <Check className="w-3 h-3 text-white drop-shadow-sm" strokeWidth={3} />}
                         </button>
                       );
                     })}
@@ -548,18 +533,12 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
                         setShowMobileColorPicker(false);
                       }}
                       className={cn(
-                        "w-5 h-5 rounded flex items-center justify-center shrink-0 transition-all duration-100",
-                        "hover:scale-110 active:scale-90",
-                        task.color === 'default' && "scale-110",
-                        "animate-in zoom-in-50 fade-in-0 slide-in-from-top-2 duration-200"
+                        "w-7 h-7 rounded-full flex items-center justify-center transition-all duration-150",
+                        "hover:scale-110 active:scale-95 border-2 border-dashed border-muted-foreground/30",
+                        task.color === 'default' && "ring-2 ring-offset-2 ring-offset-popover ring-muted-foreground"
                       )}
-                      style={{ 
-                        animationDelay: `${colorOptions.length * 30}ms`,
-                        animationFillMode: 'backwards'
-                      }}
-                      title="No highlight"
                     >
-                      <X className="w-2.5 h-2.5 text-muted-foreground" />
+                      {task.color === 'default' && <Check className="w-3 h-3 text-muted-foreground" strokeWidth={3} />}
                     </button>
                   </div>
                 </PopoverContent>
@@ -1024,76 +1003,79 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
             </Popover>
 
             {/* Color */}
-            <div ref={desktopColorPickerRef} className="relative">
-              <button
-                onClick={() => setShowDesktopColorPicker(!showDesktopColorPicker)}
-                className={cn(
-                  "h-8 w-8 rounded-full flex items-center justify-center transition-all border",
-                  task.color !== 'default'
-                    ? "border-transparent"
-                    : "bg-muted/40 border-transparent hover:bg-muted/60",
-                  showDesktopColorPicker && "ring-2 ring-primary/20"
-                )}
-                style={{
-                  backgroundColor: task.color !== 'default'
-                    ? colorOptions.find(c => c.color === task.color)?.pastelValue
-                    : undefined
-                }}
+            <Popover open={showDesktopColorPicker} onOpenChange={setShowDesktopColorPicker}>
+              <PopoverTrigger asChild>
+                <button
+                  className={cn(
+                    "h-8 w-8 rounded-full flex items-center justify-center transition-all border",
+                    task.color !== 'default'
+                      ? "border-transparent"
+                      : "bg-muted/40 border-transparent hover:bg-muted/60",
+                    showDesktopColorPicker && "ring-2 ring-primary/20"
+                  )}
+                  style={{
+                    backgroundColor: task.color !== 'default'
+                      ? hexToRgba(getTaskColor(task.color), 0.15)
+                      : undefined
+                  }}
+                >
+                  {task.color !== 'default' ? (
+                    <div className="w-4 h-4 rounded-full" style={{ backgroundColor: getTaskColor(task.color) }} />
+                  ) : (
+                    <Palette className="w-3.5 h-3.5 text-muted-foreground" />
+                  )}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent 
+                align="start" 
+                side="bottom" 
+                className="w-auto p-3 rounded-2xl shadow-xl"
+                sideOffset={6}
               >
-                <Palette
-                  className="w-3.5 h-3.5"
-                  style={{ color: task.color !== 'default'
-                    ? colorOptions.find(c => c.color === task.color)?.value
-                    : 'hsl(var(--muted-foreground))' }}
-                />
-              </button>
-              
-              <div className={cn(
-                "absolute left-0 top-full mt-2 z-50",
-                "bg-background rounded-lg shadow-lg border border-border/50",
-                "overflow-hidden transition-all duration-150 ease-out",
-                showDesktopColorPicker 
-                  ? "opacity-100 scale-100" 
-                  : "opacity-0 scale-95 pointer-events-none"
-              )}>
-                <div className="flex items-center gap-1.5 p-2 whitespace-nowrap">
-                  {colorOptions.map((option, index) => (
-                    <button
-                      key={option.color}
-                      onClick={() => {
-                        setShowDesktopColorPicker(false);
-                        updateTask(task.id, { color: option.color });
-                      }}
-                      className={cn(
-                        "w-6 h-6 rounded-full transition-all duration-150 ease-out flex items-center justify-center",
-                        "hover:scale-110",
-                        task.color === option.color && "ring-2 ring-offset-2 ring-offset-background"
-                      )}
-                      style={{ 
-                        backgroundColor: option.pastelValue,
-                        '--tw-ring-color': option.value
-                      } as React.CSSProperties}
-                      title={option.label}
-                    />
-                  ))}
-                  <div className="w-px h-5 bg-border/50 mx-0.5" />
+                <div className="grid grid-cols-3 gap-3">
+                  {/* No color first */}
                   <button
                     onClick={() => {
                       setShowDesktopColorPicker(false);
                       updateTask(task.id, { color: 'default' });
                     }}
                     className={cn(
-                      "w-6 h-6 rounded-full transition-all duration-150 ease-out flex items-center justify-center",
-                      "hover:scale-110 bg-muted/50",
-                      task.color === 'default' && "ring-2 ring-offset-2 ring-offset-background ring-muted-foreground/30"
+                      "w-9 h-9 rounded-full transition-all duration-150 flex items-center justify-center",
+                      "hover:scale-110 active:scale-95 border-2 border-dashed border-muted-foreground/40",
+                      task.color === 'default' && "ring-2 ring-offset-2 ring-offset-popover ring-muted-foreground"
                     )}
                     title="No Color"
                   >
-                    <X className="w-3 h-3 text-muted-foreground" />
+                    {task.color === 'default' && <Check className="w-4 h-4 text-muted-foreground" strokeWidth={3} />}
                   </button>
+                  {colorGrid.slice(0, 8).map((color) => {
+                    const isSelected = task.color === color;
+                    const value = getTaskColor(color);
+                    return (
+                      <button
+                        key={color}
+                        onClick={() => {
+                          setShowDesktopColorPicker(false);
+                          updateTask(task.id, { color });
+                        }}
+                        className={cn(
+                          "w-9 h-9 rounded-full transition-all duration-150 flex items-center justify-center",
+                          "hover:scale-110 active:scale-95",
+                          isSelected && "ring-2 ring-offset-2 ring-offset-popover"
+                        )}
+                        style={{ 
+                          backgroundColor: value,
+                          ['--tw-ring-color' as string]: value,
+                        }}
+                        title={color.charAt(0).toUpperCase() + color.slice(1)}
+                      >
+                        {isSelected && <Check className="w-4 h-4 text-white drop-shadow-sm" strokeWidth={3} />}
+                      </button>
+                    );
+                  })}
                 </div>
-              </div>
-            </div>
+              </PopoverContent>
+            </Popover>
 
             {/* Repeat */}
             <Popover>

@@ -1,15 +1,13 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
 import { TaskColor } from '@/types';
 import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-interface ColorPickerProps {
-  selectedColor: TaskColor;
-  onColorChange: (color: TaskColor) => void;
-  children?: React.ReactNode;
-}
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 
 /**
  * Color palette mapped 1-to-1 with Google Calendar colors
@@ -19,16 +17,16 @@ interface ColorPickerProps {
  * 7 (Peacock) → teal, 8 (Graphite) → gray, 11 (Tomato) → red
  */
 export const TASK_COLORS: Record<TaskColor, string> = {
-  default: '#9ca3af',  // Muted gray for default
-  red: '#d93025',      // Google Tomato - Vibrant red
-  orange: '#f4511e',   // Google Tangerine - Warm orange  
-  yellow: '#f6bf26',   // Google Banana - Bright yellow
-  green: '#0d9488',    // Teal-green - Fresh
-  teal: '#039be5',     // Google Peacock - Cyan blue
-  blue: '#4285f4',     // Google Blue - Primary blue
-  purple: '#7c3aed',   // Google Grape - Rich purple
-  pink: '#e91e63',     // Google Flamingo - Vibrant pink
-  gray: '#5f6368',     // Google Graphite - Neutral gray
+  default: '#9ca3af',
+  red: '#d93025',
+  orange: '#f4511e',
+  yellow: '#f6bf26',
+  green: '#0d9488',
+  teal: '#039be5',
+  blue: '#4285f4',
+  purple: '#7c3aed',
+  pink: '#e91e63',
+  gray: '#5f6368',
 };
 
 /** Get the hex color value for a TaskColor */
@@ -36,92 +34,98 @@ export function getTaskColor(color: TaskColor | string): string {
   return TASK_COLORS[color as TaskColor] || TASK_COLORS.default;
 }
 
-// Color options organized in a 2-column grid for better UX
-const colorOptions: Array<{ color: TaskColor; value: string; label: string }> = [
-  { color: 'red', value: TASK_COLORS.red, label: 'Red' },
-  { color: 'pink', value: TASK_COLORS.pink, label: 'Pink' },
-  { color: 'orange', value: TASK_COLORS.orange, label: 'Orange' },
-  { color: 'yellow', value: TASK_COLORS.yellow, label: 'Yellow' },
-  { color: 'green', value: TASK_COLORS.green, label: 'Green' },
-  { color: 'teal', value: TASK_COLORS.teal, label: 'Teal' },
-  { color: 'blue', value: TASK_COLORS.blue, label: 'Blue' },
-  { color: 'purple', value: TASK_COLORS.purple, label: 'Purple' },
-  { color: 'gray', value: TASK_COLORS.gray, label: 'Gray' },
-  { color: 'default', value: 'transparent', label: 'None' },
+// Color grid layout - organized for visual appeal
+// Row 1: No color, Red, Yellow
+// Row 2: Orange, Green, Teal
+// Row 3: Blue, Purple, Pink
+// + Gray at bottom
+const colorGrid: Array<{ color: TaskColor; label: string }> = [
+  { color: 'default', label: 'No color' },
+  { color: 'red', label: 'Red' },
+  { color: 'yellow', label: 'Yellow' },
+  { color: 'orange', label: 'Orange' },
+  { color: 'green', label: 'Green' },
+  { color: 'teal', label: 'Teal' },
+  { color: 'blue', label: 'Blue' },
+  { color: 'purple', label: 'Purple' },
+  { color: 'pink', label: 'Pink' },
+  { color: 'gray', label: 'Gray' },
 ];
 
-export function ColorPicker({ selectedColor, onColorChange, children }: ColorPickerProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+interface ColorPickerProps {
+  selectedColor: TaskColor;
+  onColorChange: (color: TaskColor) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  children?: React.ReactNode;
+  side?: 'top' | 'bottom' | 'left' | 'right';
+  align?: 'start' | 'center' | 'end';
+}
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [isOpen]);
-
+export function ColorPicker({
+  selectedColor,
+  onColorChange,
+  open,
+  onOpenChange,
+  children,
+  side = 'bottom',
+  align = 'start',
+}: ColorPickerProps) {
   const handleColorSelect = (color: TaskColor) => {
     onColorChange(color);
-    setIsOpen(false);
+    onOpenChange?.(false);
   };
 
   return (
-    <div ref={containerRef} className="relative">
-      <div onClick={() => setIsOpen(!isOpen)}>
-        {children || <button className="w-full h-full" />}
-      </div>
-      
-      {/* Color Grid Menu */}
-      <div
-        className={cn(
-          'absolute right-full top-1/2 -translate-y-1/2 mr-3',
-          'bg-background/95 backdrop-blur-xl border border-border rounded-xl shadow-xl',
-          'p-3',
-          'transition-all duration-200 ease-out origin-right',
-          isOpen
-            ? 'opacity-100 scale-100 pointer-events-auto'
-            : 'opacity-0 scale-95 pointer-events-none'
-        )}
+    <Popover open={open} onOpenChange={onOpenChange}>
+      <PopoverTrigger asChild>
+        {children}
+      </PopoverTrigger>
+      <PopoverContent
+        side={side}
+        align={align}
+        className="w-auto p-3 shadow-xl border-border/50 bg-popover/95 backdrop-blur-xl rounded-2xl"
+        sideOffset={8}
       >
-        <div className="grid grid-cols-5 gap-2">
-          {colorOptions.map(({ color, value, label }) => {
+        {/* 3x4 grid of color circles - 10 colors, 2 empty slots hidden */}
+        <div className="grid grid-cols-3 gap-3">
+          {colorGrid.map(({ color, label }) => {
             const isSelected = selectedColor === color;
-            const isTransparent = value === 'transparent';
+            const isDefault = color === 'default';
+            const colorValue = TASK_COLORS[color];
+
             return (
               <button
                 key={color}
+                onClick={() => handleColorSelect(color)}
                 className={cn(
-                  'w-8 h-8 rounded-full transition-all duration-200 flex items-center justify-center',
-                  'hover:scale-110 hover:shadow-md',
-                  isSelected && 'ring-2 ring-offset-2 ring-offset-background shadow-sm',
-                  isTransparent && 'border-2 border-dashed border-muted-foreground/30'
+                  'relative w-9 h-9 rounded-full transition-all duration-150',
+                  'hover:scale-110 active:scale-95',
+                  'focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                  isSelected && 'ring-2 ring-offset-2 ring-offset-popover',
+                  isDefault && 'border-2 border-dashed border-muted-foreground/40'
                 )}
                 style={{
-                  backgroundColor: isTransparent ? 'transparent' : value,
-                  ['--tw-ring-color' as string]: isTransparent ? 'hsl(var(--muted-foreground))' : value,
+                  backgroundColor: isDefault ? 'transparent' : colorValue,
+                  ['--tw-ring-color' as string]: isDefault ? 'hsl(var(--muted-foreground))' : colorValue,
                 }}
-                onClick={() => handleColorSelect(color)}
                 title={label}
+                aria-label={label}
               >
-                {isSelected && !isTransparent && (
-                  <Check className="w-4 h-4 text-white drop-shadow-md" strokeWidth={3} />
-                )}
-                {isTransparent && isSelected && (
-                  <Check className="w-4 h-4 text-muted-foreground" strokeWidth={3} />
+                {isSelected && (
+                  <Check
+                    className={cn(
+                      'absolute inset-0 m-auto w-4 h-4 drop-shadow-sm',
+                      isDefault ? 'text-muted-foreground' : 'text-white'
+                    )}
+                    strokeWidth={3}
+                  />
                 )}
               </button>
             );
           })}
         </div>
-      </div>
-    </div>
+      </PopoverContent>
+    </Popover>
   );
 }
-

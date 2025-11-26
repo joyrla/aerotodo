@@ -4,23 +4,20 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Task as TaskType, TaskColor } from '@/types';
 import { useCalendar } from '@/lib/contexts/CalendarContext';
 import { TaskDetailModal } from './TaskDetailModal';
-import { Trash2, Palette, Check, X } from 'lucide-react';
+import { Trash2, Check, Palette, MoreHorizontal } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { TASK_COLORS, getTaskColor } from '@/components/ui/color-picker';
-
-// Color options for inline picker (subset of all colors for quick access)
-const colorOptions: Array<{ color: TaskColor; value: string; label: string }> = [
-  { color: 'red', value: TASK_COLORS.red, label: 'Red' },
-  { color: 'orange', value: TASK_COLORS.orange, label: 'Orange' },
-  { color: 'yellow', value: TASK_COLORS.yellow, label: 'Yellow' },
-  { color: 'green', value: TASK_COLORS.green, label: 'Green' },
-  { color: 'teal', value: TASK_COLORS.teal, label: 'Teal' },
-  { color: 'blue', value: TASK_COLORS.blue, label: 'Blue' },
-  { color: 'purple', value: TASK_COLORS.purple, label: 'Purple' },
-  { color: 'pink', value: TASK_COLORS.pink, label: 'Pink' },
-  { color: 'gray', value: TASK_COLORS.gray, label: 'Gray' },
-];
+import { TASK_COLORS, getTaskColor, ColorPicker } from '@/components/ui/color-picker';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface TaskProps {
   task: TaskType;
@@ -50,28 +47,20 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
   const directionLocked = useRef<'horizontal' | 'vertical' | null>(null);
 
   const handleDelete = useCallback(() => {
-    // Store task data for undo
     const deletedTask = { ...task };
     const taskName = task.title?.trim() || 'Untitled task';
-
-    // Delete the task
     deleteTask(task.id);
-
-    // Show toast with undo
     toast(`"${taskName}" deleted`, {
       action: {
         label: 'Undo',
-        onClick: () => {
-          // Restore the task with same ID
-          addTask(deletedTask);
-        }
-      }
+        onClick: () => addTask(deletedTask),
+      },
     });
   }, [task, deleteTask, addTask]);
-  
-  // Use optimistic state if available, otherwise use task.completed
+
+  // Use optimistic state if available
   const displayCompleted = optimisticCompleted !== null ? optimisticCompleted : task.completed;
-  
+
   // Sync optimistic state with actual task state
   useEffect(() => {
     if (optimisticCompleted !== null && optimisticCompleted === task.completed) {
@@ -79,38 +68,23 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
     }
   }, [task.completed, optimisticCompleted]);
 
-  const handleEdit = (e: React.MouseEvent) => {
-    // Delay click to detect if it's part of a double-click
-    if (clickTimeoutRef.current) {
-      clearTimeout(clickTimeoutRef.current);
-    }
+  const handleClick = (e: React.MouseEvent) => {
+    if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
 
     clickTimeoutRef.current = setTimeout(() => {
-      // Only open modal if not clicking on interactive elements and not editing
       const target = e.target as HTMLElement;
-      if (
-        !isEditing &&
-        !target.closest('button') &&
-        !target.closest('input') &&
-        !target.closest('[data-delete-button]')
-      ) {
+      if (!isEditing && !target.closest('button') && !target.closest('input')) {
         setShowDetailModal(true);
       }
-    }, 0); // Instant - no delay
+    }, 0);
   };
 
   const handleDoubleClick = (e: React.MouseEvent) => {
-    // Cancel the single-click timeout
     if (clickTimeoutRef.current) {
       clearTimeout(clickTimeoutRef.current);
       clickTimeoutRef.current = null;
     }
-
-    // Start inline editing on double-click
-    if (
-      !(e.target as HTMLElement).closest('button') &&
-      !(e.target as HTMLElement).closest('input')
-    ) {
+    if (!(e.target as HTMLElement).closest('button') && !(e.target as HTMLElement).closest('input')) {
       e.preventDefault();
       e.stopPropagation();
       setIsEditing(true);
@@ -119,15 +93,12 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
   };
 
   const handleSaveEdit = () => {
-    // Use setTimeout to ensure blur completes properly
     setTimeout(() => {
-      // Always save if there's text
       if (editedTitle.trim()) {
         if (editedTitle.trim() !== task.title) {
           updateTask(task.id, { title: editedTitle.trim() });
         }
       } else {
-        // Reset to original if empty
         setEditedTitle(task.title);
       }
       setIsEditing(false);
@@ -135,9 +106,8 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSaveEdit();
-    } else if (e.key === 'Escape') {
+    if (e.key === 'Enter') handleSaveEdit();
+    else if (e.key === 'Escape') {
       setEditedTitle(task.title);
       setIsEditing(false);
     }
@@ -150,41 +120,18 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
     }
   }, [isEditing]);
 
-  // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
-      if (clickTimeoutRef.current) {
-        clearTimeout(clickTimeoutRef.current);
-      }
+      if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
     };
   }, []);
 
-  const handleColorChange = (color: TaskType['color']) => {
+  const handleColorChange = (color: TaskColor) => {
     setShowColorPicker(false);
     updateTask(task.id, { color });
   };
 
-  const colorPickerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (colorPickerRef.current && !colorPickerRef.current.contains(event.target as Node)) {
-        setShowColorPicker(false);
-      }
-    };
-
-    if (showColorPicker) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [showColorPicker]);
-
-  // Get color value for highlighting - uses shared color system
-  const getColorValue = (color: TaskType['color']): string => {
-    return getTaskColor(color);
-  };
-
-  // Convert hex to rgba with opacity
+  // Convert hex to rgba
   const hexToRgba = (hex: string, opacity: number): string => {
     const r = parseInt(hex.slice(1, 3), 16);
     const g = parseInt(hex.slice(3, 5), 16);
@@ -192,7 +139,7 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
     return `rgba(${r}, ${g}, ${b}, ${opacity})`;
   };
 
-  // Gmail-style swipe handlers
+  // Mobile swipe handlers
   const onTouchStart = (e: React.TouchEvent) => {
     if (isDragging || isDeleting) return;
     const touch = e.touches[0];
@@ -208,17 +155,14 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
     const touch = e.touches[0];
     const deltaX = touch.clientX - startXRef.current;
     const deltaY = touch.clientY - startYRef.current;
-    
-    // Lock direction after 10px movement
+
     if (!directionLocked.current && (Math.abs(deltaX) > 10 || Math.abs(deltaY) > 10)) {
       directionLocked.current = Math.abs(deltaX) > Math.abs(deltaY) ? 'horizontal' : 'vertical';
     }
-    
-    // Only swipe left (negative deltaX)
+
     if (directionLocked.current === 'horizontal' && deltaX < 0) {
       isDraggingSwipe.current = true;
       currentXRef.current = touch.clientX;
-      // Direct manipulation - no state update during drag for smoothness
       const swipeAmount = Math.min(Math.abs(deltaX), 200);
       setTranslateX(-swipeAmount);
     }
@@ -226,307 +170,234 @@ export function Task({ task, isDragging, dragHandleProps, narrowOnDrag, rightCon
 
   const onTouchEnd = () => {
     if (isDragging || isDeleting) return;
-    
     const deltaX = currentXRef.current - startXRef.current;
-    const swipeDistance = Math.abs(deltaX);
-    
-    // If swiped more than 100px, delete
+
     if (directionLocked.current === 'horizontal' && deltaX < -100) {
       setIsDeleting(true);
-      setTranslateX(-500); // Slide off screen
-      setTimeout(() => {
-        handleDelete();
-      }, 120);
+      setTranslateX(-500);
+      setTimeout(handleDelete, 120);
     } else {
-      // Snap back
       setTranslateX(0);
     }
-    
+
     isDraggingSwipe.current = false;
     directionLocked.current = null;
   };
 
   const showSwipeAction = translateX < -20;
+  const hasColor = task.color && task.color !== 'default';
+  const colorValue = getTaskColor(task.color);
 
   return (
     <>
       {/* Swipe Container */}
-      <div 
+      <div
         className="relative overflow-hidden rounded-lg"
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
       >
-        {/* Delete Action Background - revealed on swipe (Mobile only) */}
-        <div 
+        {/* Delete Action Background (Mobile) */}
+        <div
           className={cn(
-            "absolute inset-0 flex items-center justify-end pr-5 md:hidden",
-            "bg-red-500/50",
-            "transition-opacity duration-200",
-            showSwipeAction ? "opacity-100" : "opacity-0"
+            'absolute inset-0 flex items-center justify-end pr-5 md:hidden',
+            'bg-red-500/50 transition-opacity duration-200',
+            showSwipeAction ? 'opacity-100' : 'opacity-0'
           )}
         >
-          <Trash2 className={cn(
-            "w-5 h-5 text-white transition-transform duration-150",
-            translateX < -100 && "scale-110"
-          )} />
+          <Trash2 className={cn('w-5 h-5 text-white transition-transform duration-150', translateX < -100 && 'scale-110')} />
         </div>
 
         {/* Task Card */}
-      <div
-        {...dragHandleProps}
-        data-narrow-drag={isDragging && narrowOnDrag ? 'true' : undefined}
-        className={cn(
-             'group/task relative cursor-pointer min-h-[44px] md:min-h-[36px] select-none touch-manipulation',
-             'py-2.5 md:py-2 px-3 rounded-lg',
-             'bg-foreground/[0.03] shadow-[0_1px_2px_rgba(0,0,0,0.04)]',
-             'md:overflow-hidden',
-             'md:active:scale-100',
-             !showSwipeAction && !isDragging && 'active:scale-[0.98]',
-             !isDragging && !showSwipeAction && 'hover:bg-foreground/[0.06] hover:shadow-[0_2px_4px_rgba(0,0,0,0.06)]',
-             isDragging && 'task-dragging',
-             displayCompleted && !isDragging && 'opacity-50',
-             isDragging && narrowOnDrag && 'task-narrow-drag'
-        )}
-           style={{
-             ...(isDragging && narrowOnDrag ? { width: '160px', maxWidth: '160px', minWidth: '160px' } : {}),
-             ...(!isDragging && translateX !== 0 ? { transform: `translateX(${translateX}px)` } : {}),
-             transition: isDragging 
-               ? 'none'
-               : isDraggingSwipe.current 
-                 ? 'none' 
-                 : isDeleting 
-                   ? 'transform 150ms ease-out' 
-                   : 'transform 200ms cubic-bezier(0.25, 0.1, 0.25, 1)',
-           }}
-        onClick={handleEdit}
-        onDoubleClick={handleDoubleClick}
-      >
-         {/* Color Highlight - Full background filling the card */}
-         {task.color !== 'default' && (
-           <div
-             className="absolute inset-0"
-             style={{
-               backgroundColor: hexToRgba(getColorValue(task.color), 0.12),
-               animation: 'scaleHighlight 0.1s cubic-bezier(0.2, 0, 0, 1) forwards',
-             }}
-           />
-         )}
+        <div
+          {...dragHandleProps}
+          data-narrow-drag={isDragging && narrowOnDrag ? 'true' : undefined}
+          className={cn(
+            'group/task relative cursor-pointer min-h-[44px] md:min-h-[36px] select-none touch-manipulation',
+            'py-2.5 md:py-2 px-3 rounded-lg',
+            'bg-foreground/[0.03] shadow-[0_1px_2px_rgba(0,0,0,0.04)]',
+            'md:active:scale-100',
+            !showSwipeAction && !isDragging && 'active:scale-[0.98]',
+            !isDragging && !showSwipeAction && 'hover:bg-foreground/[0.06] hover:shadow-[0_2px_4px_rgba(0,0,0,0.06)]',
+            isDragging && 'task-dragging',
+            displayCompleted && !isDragging && 'opacity-50',
+            isDragging && narrowOnDrag && 'task-narrow-drag'
+          )}
+          style={{
+            ...(isDragging && narrowOnDrag ? { width: '160px', maxWidth: '160px', minWidth: '160px' } : {}),
+            ...(!isDragging && translateX !== 0 ? { transform: `translateX(${translateX}px)` } : {}),
+            transition: isDragging ? 'none' : isDraggingSwipe.current ? 'none' : isDeleting ? 'transform 150ms ease-out' : 'transform 200ms cubic-bezier(0.25, 0.1, 0.25, 1)',
+          }}
+          onClick={handleClick}
+          onDoubleClick={handleDoubleClick}
+        >
+          {/* Color Highlight Background */}
+          {hasColor && (
+            <div
+              className="absolute inset-0 rounded-lg"
+              style={{
+                backgroundColor: hexToRgba(colorValue, 0.12),
+              }}
+            />
+          )}
 
-        <div className={cn(
-          'flex items-center gap-3 h-full relative z-10',
-          isDragging && narrowOnDrag && 'w-full'
-        )}>
-
-          {/* Checkbox - Always visible on left */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setOptimisticCompleted(!displayCompleted);
-              toggleTaskComplete(task.id);
-            }}
-            className={cn(
-              'group/checkbox flex-shrink-0 flex items-center justify-center',
-              'p-3 -m-3 md:p-2 md:-m-2',
-              'transition-all duration-200 ease-out'
-            )}
-          >
-            <div className={cn(
-              'w-5 h-5 md:w-4 md:h-4 rounded-full border flex items-center justify-center',
-              'transition-all duration-200 ease-out',
-              'group-hover/checkbox:scale-110 group-active/checkbox:scale-90',
-                displayCompleted
-                ? 'bg-primary border-primary text-primary-foreground'
-                : 'border-muted-foreground/40 group-hover/checkbox:border-primary/60 bg-transparent'
-            )}>
-              {displayCompleted && <Check className="w-3 h-3 md:w-2.5 md:h-2.5" strokeWidth={3} />}
-            </div>
-            </button>
-
-          {/* Task Title */}
-          <div 
-            className={cn(
-              'flex-1 min-w-0 transition-colors',
-              isDragging && narrowOnDrag && 'flex-none'
-            )}
-            style={{
-              ...(isDragging && narrowOnDrag ? { maxWidth: '110px', width: '110px' } : {})
-            }}
-          >
-            {isEditing ? (
-              <input
-                ref={editInputRef}
-                type="text"
-                value={editedTitle}
-                onChange={(e) => setEditedTitle(e.target.value)}
-                onBlur={handleSaveEdit}
-                onKeyDown={handleKeyDown}
-                onClick={(e) => e.stopPropagation()}
-                onDoubleClick={(e) => e.stopPropagation()}
-                className={cn(
-                  'w-full bg-transparent border-0 outline-none text-sm font-mono px-0 py-0',
-                  'focus:ring-0 placeholder:text-muted-foreground',
-                  displayCompleted && 'line-through text-muted-foreground'
-                )}
-                style={{ lineHeight: '1.5' }}
-              />
-            ) : (
-              <div className="flex flex-col w-full">
+          <div className={cn('flex items-center gap-3 h-full relative z-10', isDragging && narrowOnDrag && 'w-full')}>
+            {/* Checkbox */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setOptimisticCompleted(!displayCompleted);
+                toggleTaskComplete(task.id);
+              }}
+              className={cn('group/checkbox flex-shrink-0 flex items-center justify-center', 'p-3 -m-3 md:p-2 md:-m-2', 'transition-all duration-200 ease-out')}
+            >
               <div
                 className={cn(
-                    'text-sm font-mono w-full leading-relaxed',
-                    displayCompleted ? 'line-through text-muted-foreground' : 'text-foreground'
+                  'w-5 h-5 md:w-4 md:h-4 rounded-full border flex items-center justify-center',
+                  'transition-all duration-200 ease-out',
+                  'group-hover/checkbox:scale-110 group-active/checkbox:scale-90',
+                  displayCompleted ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/40 group-hover/checkbox:border-primary/60 bg-transparent'
                 )}
-                title="Double-click to edit"
-                  style={{
-                    wordBreak: 'break-word'
-                  }}
               >
-                {task.title}
-                </div>
-                {task.timeSlot && task.timeSlot.start && task.timeSlot.end && (
-                  <div className="text-[10px] font-mono text-muted-foreground/70 mt-0.5 leading-tight">
-                    {task.timeSlot.start} - {task.timeSlot.end}
+                {displayCompleted && <Check className="w-3 h-3 md:w-2.5 md:h-2.5" strokeWidth={3} />}
+              </div>
+            </button>
+
+            {/* Task Title */}
+            <div
+              className={cn('flex-1 min-w-0 transition-colors', isDragging && narrowOnDrag && 'flex-none')}
+              style={{ ...(isDragging && narrowOnDrag ? { maxWidth: '110px', width: '110px' } : {}) }}
+            >
+              {isEditing ? (
+                <input
+                  ref={editInputRef}
+                  type="text"
+                  value={editedTitle}
+                  onChange={(e) => setEditedTitle(e.target.value)}
+                  onBlur={handleSaveEdit}
+                  onKeyDown={handleKeyDown}
+                  onClick={(e) => e.stopPropagation()}
+                  onDoubleClick={(e) => e.stopPropagation()}
+                  className={cn(
+                    'w-full bg-transparent border-0 outline-none text-sm font-mono px-0 py-0',
+                    'focus:ring-0 placeholder:text-muted-foreground',
+                    displayCompleted && 'line-through text-muted-foreground'
+                  )}
+                  style={{ lineHeight: '1.5' }}
+                />
+              ) : (
+                <div className="flex flex-col w-full">
+                  <div
+                    className={cn('text-sm font-mono w-full leading-relaxed', displayCompleted ? 'line-through text-muted-foreground' : 'text-foreground')}
+                    title="Double-click to edit"
+                    style={{ wordBreak: 'break-word' }}
+                  >
+                    {task.title}
                   </div>
-                )}
+                  {task.timeSlot && task.timeSlot.start && task.timeSlot.end && (
+                    <div className="text-[10px] font-mono text-muted-foreground/70 mt-0.5 leading-tight">
+                      {task.timeSlot.start} - {task.timeSlot.end}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Right Content (e.g., Overdue Badge) */}
+            {rightContent && (
+              <div className={cn('flex-shrink-0 transition-opacity duration-200', 'md:group-hover/task:opacity-0', showSwipeAction && 'opacity-0')}>{rightContent}</div>
+            )}
+
+            {/* Desktop Actions - Clean hover reveal */}
+            {!(isDragging && narrowOnDrag) && (
+              <div className={cn('hidden md:flex items-center gap-1', 'opacity-0 group-hover/task:opacity-100 transition-opacity duration-150')}>
+                {/* Color Picker Trigger */}
+                <ColorPicker selectedColor={task.color || 'default'} onColorChange={handleColorChange} open={showColorPicker} onOpenChange={setShowColorPicker} side="bottom" align="end">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowColorPicker(true);
+                    }}
+                    className={cn(
+                      'w-7 h-7 rounded-md flex items-center justify-center',
+                      'transition-all duration-150',
+                      'hover:bg-accent hover:scale-105 active:scale-95'
+                    )}
+                    title="Color"
+                  >
+                    {hasColor ? (
+                      <div className="w-4 h-4 rounded-full shadow-sm" style={{ backgroundColor: colorValue }} />
+                    ) : (
+                      <Palette className="w-4 h-4 text-muted-foreground" />
+                    )}
+                  </button>
+                </ColorPicker>
+
+                {/* More Menu */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      onClick={(e) => e.stopPropagation()}
+                      className={cn(
+                        'w-7 h-7 rounded-md flex items-center justify-center',
+                        'transition-all duration-150',
+                        'hover:bg-accent hover:scale-105 active:scale-95',
+                        'text-muted-foreground'
+                      )}
+                      title="More options"
+                    >
+                      <MoreHorizontal className="w-4 h-4" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="min-w-[160px]">
+                    {/* Color Submenu */}
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger>
+                        <Palette className="w-4 h-4 mr-2" />
+                        Color
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent className="p-2">
+                        <div className="grid grid-cols-3 gap-2">
+                          {(['default', 'red', 'yellow', 'orange', 'green', 'teal', 'blue', 'purple', 'pink', 'gray'] as TaskColor[]).map((color) => {
+                            const isSelected = (task.color || 'default') === color;
+                            const isDefault = color === 'default';
+                            const value = TASK_COLORS[color];
+                            return (
+                              <button
+                                key={color}
+                                onClick={() => handleColorChange(color)}
+                                className={cn(
+                                  'w-7 h-7 rounded-full transition-all duration-150',
+                                  'hover:scale-110 active:scale-95',
+                                  isSelected && 'ring-2 ring-offset-2 ring-offset-popover',
+                                  isDefault && 'border-2 border-dashed border-muted-foreground/40'
+                                )}
+                                style={{
+                                  backgroundColor: isDefault ? 'transparent' : value,
+                                  ['--tw-ring-color' as string]: isDefault ? 'hsl(var(--muted-foreground))' : value,
+                                }}
+                              >
+                                {isSelected && <Check className={cn('w-3 h-3 m-auto', isDefault ? 'text-muted-foreground' : 'text-white')} strokeWidth={3} />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleDelete} className="text-destructive focus:text-destructive">
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             )}
           </div>
-
-          {/* Right Content (e.g. Overdue Badge) */}
-          {rightContent && (
-            <div className={cn(
-              "flex-shrink-0 transition-opacity duration-200",
-              "md:group-hover/task:opacity-0",
-              showColorPicker && "md:opacity-0",
-              showSwipeAction && "opacity-0"
-            )}>
-              {rightContent}
-        </div>
-          )}
-
-        {/* Desktop only: Hover actions (hidden on mobile) */}
-        {!(isDragging && narrowOnDrag) && (
-        <div
-          ref={colorPickerRef}
-          className={cn(
-                 'absolute right-1 top-2 bottom-2 left-[50%] flex items-center justify-end pointer-events-none',
-                 'hidden md:flex' // Hide on mobile
-          )}
-        >
-          <div className={cn(
-                 'relative flex items-center transition-all duration-[250ms] ease-out pointer-events-auto',
-                 'opacity-0 translate-x-2 group-hover/task:opacity-100 group-hover/task:translate-x-0',
-                 'rounded-md bg-background shadow-sm py-0.5',
-                 showColorPicker ? 'gap-1 pl-1.5 pr-1.5' : 'gap-1 pr-1.5'
-          )}>
-                 {/* Color Options - Extension to the left */}
-            <div
-              className={cn(
-                     'flex items-center gap-1.5 transition-all duration-200 ease-out overflow-hidden',
-                showColorPicker 
-                       ? 'opacity-100 max-w-[300px] pointer-events-auto translate-x-0 pl-1 pr-2'
-                       : 'opacity-0 max-w-0 pointer-events-none -translate-x-2'
-              )}
-            >
-                {colorOptions.map(({ color, value, label }) => {
-                  const isSelected = task.color === color;
-                  return (
-                    <button
-                      key={color}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleColorChange(color);
-                      }}
-                      className={cn(
-                          'w-4 h-4 rounded-full transition-all duration-200 ease-out flex-shrink-0 flex items-center justify-center',
-                          'hover:scale-125 hover:shadow-sm',
-                        isSelected && 'scale-125 ring-1 ring-offset-1 ring-offset-background shadow-sm',
-                      )}
-                      style={{
-                        backgroundColor: value,
-                        ['--tw-ring-color' as string]: value,
-                      }}
-                      title={label}
-                    >
-                        {isSelected && (
-                        <Check 
-                          className="w-2.5 h-2.5 text-white drop-shadow-sm" 
-                          strokeWidth={3}
-                        />
-                      )}
-                    </button>
-                  );
-                })}
-                  {/* Clear Color Button */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleColorChange('default');
-                  }}
-                  className={cn(
-                      'w-4 h-4 rounded-full transition-all duration-200 ease-out flex-shrink-0 flex items-center justify-center',
-                      'hover:scale-125 border border-dashed border-muted-foreground/40',
-                      task.color === 'default' && 'scale-125 ring-1 ring-offset-1 ring-offset-background ring-muted-foreground shadow-sm'
-                  )}
-                    title="No Color"
-                >
-                    {task.color === 'default' && <Check className="w-2.5 h-2.5 text-muted-foreground" strokeWidth={3} />}
-                </button>
-            </div>
-
-            {/* Color Picker Button */}
-                 <div className="flex items-center justify-center">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowColorPicker(!showColorPicker);
-              }}
-              className={cn(
-                       'w-6 h-6 flex items-center justify-center rounded transition-all duration-200',
-                'text-muted-foreground hover:text-foreground',
-                       'hover:bg-accent hover:scale-110',
-                task.color !== 'default' && 'text-foreground/80',
-                       showColorPicker && 'bg-accent'
-              )}
-              style={{
-                color: task.color !== 'default' ? getColorValue(task.color) : undefined,
-              }}
-              title="Change color"
-            >
-              <Palette className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {/* Delete Button */}
-                 <div className="flex items-center justify-center">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                       handleDelete();
-              }}
-              className={cn(
-                       'w-6 h-6 flex items-center justify-center rounded transition-all duration-200',
-                'text-muted-foreground hover:text-destructive',
-                       'hover:bg-accent hover:scale-110'
-              )}
-              title="Delete task"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
-          </div>
-          </div>
-        </div>
-        )}
-        </div>
         </div>
       </div>
 
-      <TaskDetailModal
-        task={task}
-        open={showDetailModal}
-        onOpenChange={setShowDetailModal}
-      />
+      <TaskDetailModal task={task} open={showDetailModal} onOpenChange={setShowDetailModal} />
     </>
   );
 }
