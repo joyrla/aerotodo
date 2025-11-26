@@ -286,11 +286,13 @@ export function MonthView() {
                   onMouseEnter={() => setHoveredDate(dateStr)}
                   onMouseLeave={() => setHoveredDate(null)}
                   className={cn(
-                    'group relative flex flex-col border-r border-border transition-all cursor-pointer overflow-hidden',
+                    'group relative flex flex-col border-r border-border transition-colors cursor-pointer overflow-hidden',
                     'p-1 md:p-2',
                     'min-h-0 h-full',
-                    'active:bg-accent/40 md:hover:bg-accent/30',
-                    isToday && 'bg-primary/5',
+                    'active:bg-accent/40',
+                    hoveredDate === dateStr && !hoveredTask && 'bg-accent/30',
+                    isToday && !hoveredDate && 'bg-primary/5',
+                    isToday && hoveredDate === dateStr && !hoveredTask && 'bg-primary/10',
                     !isCurrentMonth && 'bg-muted/30',
                     isPast && !isToday && 'opacity-60'
                   )}
@@ -405,8 +407,14 @@ export function MonthView() {
                     {allDayTasks.slice(0, maxVisibleDesktop).map((task) => (
                       <div
                         key={task.id}
-                        onMouseEnter={() => setHoveredTask(task.id)}
-                        onMouseLeave={() => setHoveredTask(null)}
+                        onMouseEnter={(e) => {
+                          e.stopPropagation();
+                          setHoveredTask(task.id);
+                        }}
+                        onMouseLeave={(e) => {
+                          e.stopPropagation();
+                          setHoveredTask(null);
+                        }}
                         onClick={(e) => {
                           e.stopPropagation();
                           setSelectedTask(task.id);
