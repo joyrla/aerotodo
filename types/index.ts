@@ -95,6 +95,12 @@ export interface ReminderPreset {
   enabled: boolean;
 }
 
+export interface TimePreset {
+  id: string;
+  label: string;
+  minutes: number;
+}
+
 export interface ReminderSettings {
   presets: ReminderPreset[];
 }
@@ -131,6 +137,8 @@ export interface CalendarContextType {
   goToNextMonth: () => void;
   goToPreviousDay: () => void;
   goToNextDay: () => void;
+  timePresets: TimePreset[];
+  updateTimePresets: (presets: TimePreset[]) => void;
 }
 
 export interface DragItem {
@@ -141,4 +149,53 @@ export interface DragItem {
 export interface DropResult {
   droppableId: string;
   index: number;
+}
+
+// Google Calendar Integration Types
+export interface GoogleCalendarSettings {
+  enabled: boolean;
+  accessToken?: string;
+  refreshToken?: string;
+  tokenExpiry?: string;
+  defaultCalendarId?: string; // The calendar to sync to
+  profileId?: string; // Dedicated profile for GCal tasks
+  twoWaySync: boolean; // Sync changes from GCal back to app
+  syncAllTasks: boolean; // Sync all tasks or only selected ones
+  syncTimeBlockedOnly: boolean; // Only sync tasks with time slots
+  lastSyncAt?: string;
+}
+
+export interface GoogleCalendarEvent {
+  id: string;
+  summary: string;
+  description?: string;
+  start: {
+    dateTime?: string;
+    date?: string;
+    timeZone?: string;
+  };
+  end: {
+    dateTime?: string;
+    date?: string;
+    timeZone?: string;
+  };
+  status?: 'confirmed' | 'tentative' | 'cancelled';
+  colorId?: string;
+  recurrence?: string[];
+}
+
+export interface GoogleCalendar {
+  id: string;
+  summary: string;
+  description?: string;
+  primary?: boolean;
+  backgroundColor?: string;
+  foregroundColor?: string;
+}
+
+export interface GoogleCalendarSyncResult {
+  created: number;
+  updated: number;
+  deleted: number;
+  errors: string[];
 }

@@ -39,7 +39,7 @@ export const auth = {
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/calendar`,
+        redirectTo: `${window.location.origin}/auth/callback?next=/calendar`,
         queryParams: {
           access_type: 'offline',
           prompt: 'consent',
@@ -55,7 +55,7 @@ export const auth = {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/calendar`
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=/calendar`
       }
     });
     return { data, error };
@@ -91,7 +91,7 @@ export const auth = {
   resetPassword: async (email: string) => {
     if (!supabase) return { data: null, error: new Error('Supabase not configured') };
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`
+      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`
     });
     return { data, error };
   },

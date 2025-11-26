@@ -3,13 +3,15 @@
 import { useState, useEffect, useRef } from 'react';
 import { Task as TaskType, TaskColor, RepeatPattern } from '@/types';
 import { useCalendar } from '@/lib/contexts/CalendarContext';
+import { useGoogleCalendar } from '@/lib/hooks/useGoogleCalendar';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { TimeSlotPicker } from './TimeSlotPicker';
-import { Trash2, Plus, Repeat, Bell, Palette, ChevronDown, Clock, Calendar as CalendarIcon, X, RotateCw, CalendarDays, CalendarCheck, Check, Edit2, AlignLeft, ArrowRight } from 'lucide-react';
+import { Trash2, Plus, Repeat, Bell, Palette, ChevronDown, Clock, Calendar as CalendarIcon, X, RotateCw, CalendarDays, CalendarCheck, Check, Edit2, AlignLeft, ArrowRight, Inbox, Loader2 } from 'lucide-react';
 import { dateHelpers } from '@/lib/utils/dateHelpers';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -39,11 +41,14 @@ interface TaskDetailModalProps {
 }
 
 export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalProps) {
-  const { updateTask, deleteTask, toggleTaskComplete, tasks, setCurrentDate } = useCalendar();
+  const { updateTask, deleteTask, toggleTaskComplete, tasks, setCurrentDate, timePresets } = useCalendar();
+  const { isConnected: isGcalConnected, syncTask, unsyncTask, settings: gcalSettings } = useGoogleCalendar();
+  const [isSyncingToGcal, setIsSyncingToGcal] = useState(false);
   const [title, setTitle] = useState(task?.title || '');
   const [notes, setNotes] = useState(task?.notes || '');
   const [newSubtask, setNewSubtask] = useState('');
-  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showDesktopColorPicker, setShowDesktopColorPicker] = useState(false);
+  const [showMobileColorPicker, setShowMobileColorPicker] = useState(false);
   const [showReminderManual, setShowReminderManual] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showNavigateDialog, setShowNavigateDialog] = useState(false);
@@ -86,7 +91,7 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
   const titleInputRef = useRef<HTMLInputElement>(null);
   const notesTextareaRef = useRef<HTMLTextAreaElement>(null);
   const subtaskInputRef = useRef<HTMLInputElement>(null);
-  const colorPickerRef = useRef<HTMLDivElement>(null); // Added Ref for color picker
+  const desktopColorPickerRef = useRef<HTMLDivElement>(null);
   const currentTitleRef = useRef<string>(title);
   const currentNotesRef = useRef<string>(notes);
   const currentSubtaskRef = useRef<string>(newSubtask);
@@ -102,19 +107,21 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
     setNotes(task.notes || '');
   }, [task.id, task.title, task.notes]);
 
-  // Handle click outside for color picker
+  // Handle click outside for color picker (Desktop only)
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (colorPickerRef.current && !colorPickerRef.current.contains(event.target as Node)) {
-        setShowColorPicker(false);
+      const target = event.target as Node;
+      const desktopContains = desktopColorPickerRef.current?.contains(target);
+      if (!desktopContains) {
+        setShowDesktopColorPicker(false);
       }
     };
 
-    if (showColorPicker) {
+    if (showDesktopColorPicker) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [showColorPicker]);
+  }, [showDesktopColorPicker]);
 
   // Overlap Detection
   const checkOverlap = (newStart: string, newEnd: string) => {
@@ -257,7 +264,7 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
         showCloseButton={false}
         mobileSheet={!isDesktop}
         mobilePosition="bottom"
-        className="w-full sm:max-w-2xl bg-background border-border/50 p-0 gap-0 overflow-hidden backface-hidden"
+        className="w-full sm:max-w-lg bg-background border-border/50 p-0 gap-0 overflow-hidden backface-hidden"
         onOpenAutoFocus={(e) => {
           e.preventDefault();
           // Delay focus to after animation completes
@@ -429,23 +436,33 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
                     </div>
 
                     {/* Duration chips - more compact */}
-                    <div className="flex gap-1">
-                      {[{ l: '15m', m: 15 }, { l: '30m', m: 30 }, { l: '1h', m: 60 }, { l: '2h', m: 120 }].map((d) => {
+                    <div className="flex gap-1 items-center">
+                      {timePresets.map((d) => {
                         // Check if this duration matches current selection
                         const start = task.timeSlot?.start || '09:00';
                         const end = task.timeSlot?.end || '10:00';
                         const [sh, sm] = start.split(':').map(Number);
                         const [eh, em] = end.split(':').map(Number);
                         const currentDuration = (eh * 60 + em) - (sh * 60 + sm);
-                        const isActive = task.timeSlot && currentDuration === d.m;
+                        const isActive = task.timeSlot && currentDuration === d.minutes;
                         
                         return (
                           <button
-                            key={d.l}
+                            key={d.id}
                             onClick={() => {
-                              const [h, m] = start.split(':').map(Number);
-                              const endDate = new Date(2000, 0, 1, h, m + d.m);
-                              handleTimeSlotChange({ start, end: `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}` });
+                              let startStr = task.timeSlot?.start;
+                              if (!startStr) {
+                                const now = new Date();
+                                const h = now.getHours();
+                                const m = now.getMinutes();
+                                startStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                              }
+                              const [h, m] = startStr.split(':').map(Number);
+                              const endDate = new Date(2000, 0, 1, h, m + d.minutes);
+                              handleTimeSlotChange({ 
+                                start: startStr, 
+                                end: `${String(endDate.getHours()).padStart(2, '0')}:${String(endDate.getMinutes()).padStart(2, '0')}` 
+                              });
                             }}
                             className={cn(
                               "flex-1 py-1 text-[10px] font-mono rounded-md transition-colors",
@@ -454,87 +471,99 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
                                 : "bg-muted/40 text-muted-foreground hover:bg-orange-500/10 hover:text-orange-600"
                             )}
                           >
-                            {d.l}
+                            {d.label}
                           </button>
                         );
                       })}
+                      <Link href="/settings?section=general">
+                        <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md hover:bg-muted/60 ml-0.5">
+                          <Edit2 className="w-3 h-3 text-muted-foreground" />
+                        </Button>
+                      </Link>
                     </div>
                   </div>
                 </PopoverContent>
               </Popover>
 
-              {/* Color - Inline expanding bar */}
-              <div ref={colorPickerRef} className="relative flex items-center">
-                <button
-                  onClick={() => setShowColorPicker(!showColorPicker)}
-                  className={cn(
-                    "w-7 h-7 rounded-md flex items-center justify-center transition-colors shrink-0 z-10",
-                    task.color === 'default' && "bg-muted/30"
-                  )}
-                  style={{
-                    backgroundColor: task.color !== 'default'
-                      ? colorOptions.find(c => c.color === task.color)?.pastelValue
-                      : undefined
-                  }}
-                >
-                  <Palette
-                    className="w-3 h-3"
-                    style={{ color: task.color !== 'default'
-                      ? colorOptions.find(c => c.color === task.color)?.value
-                      : 'hsl(var(--muted-foreground))' }}
-                  />
-                </button>
-                
-                {/* Expanding color options */}
-                <div 
-                  className={cn(
-                    "flex items-center gap-1 overflow-hidden transition-all duration-150 ease-out origin-left",
-                    showColorPicker ? "max-w-[200px] opacity-100 ml-1" : "max-w-0 opacity-0 ml-0"
-                  )}
-                >
-                  {colorOptions.map(({ color, pastelValue, value, label }, index) => {
-                    const isSelected = task.color === color;
-                    return (
-                      <button
-                        key={color}
-                        onClick={() => {
-                          updateTask(task.id, { color });
-                          setShowColorPicker(false);
-                        }}
-                        className={cn(
-                          "w-6 h-6 rounded-full transition-all duration-100 flex items-center justify-center shrink-0",
-                          "hover:scale-110 active:scale-90"
-                        )}
-                        style={{ 
-                          backgroundColor: pastelValue,
-                          transitionDelay: showColorPicker ? `${index * 20}ms` : '0ms'
-                        }}
-                        title={label}
-                      >
-                        {isSelected && (
-                          <Check className="w-2.5 h-2.5" style={{ color: value }} strokeWidth={3} />
-                        )}
-                      </button>
-                    );
-                  })}
-                  {/* No color option */}
+              {/* Color - Mobile Popover */}
+              <Popover open={showMobileColorPicker} onOpenChange={setShowMobileColorPicker}>
+                <PopoverTrigger asChild>
                   <button
-                    onClick={() => {
-                      updateTask(task.id, { color: 'default' });
-                      setShowColorPicker(false);
-                    }}
                     className={cn(
-                      "w-6 h-6 rounded-full flex items-center justify-center shrink-0 transition-all duration-100",
-                      "hover:scale-110 active:scale-90",
-                      task.color === 'default' && "bg-muted/50"
+                      "w-7 h-7 rounded-md flex items-center justify-center transition-colors shrink-0",
+                      showMobileColorPicker && "bg-accent"
                     )}
-                    style={{ transitionDelay: showColorPicker ? `${colorOptions.length * 20}ms` : '0ms' }}
-                    title="No highlight"
+                    style={{
+                      backgroundColor: task.color !== 'default'
+                        ? colorOptions.find(c => c.color === task.color)?.pastelValue
+                        : undefined
+                    }}
                   >
-                    <X className="w-2.5 h-2.5 text-muted-foreground" />
+                    <Palette
+                      className="w-3 h-3"
+                      style={{ color: task.color !== 'default'
+                        ? colorOptions.find(c => c.color === task.color)?.value
+                        : 'hsl(var(--muted-foreground))' }}
+                    />
                   </button>
-                </div>
-              </div>
+                </PopoverTrigger>
+                <PopoverContent 
+                  align="start" 
+                  side="bottom" 
+                  className={cn(
+                    "w-auto py-1 px-1.5",
+                    "rounded-md bg-background shadow-sm border-none"
+                  )}
+                >
+                  <div className="flex items-center gap-1">
+                    {colorOptions.map(({ color, pastelValue, value, label }, index) => {
+                      const isSelected = task.color === color;
+                      return (
+                        <button
+                          key={color}
+                          onClick={() => {
+                            updateTask(task.id, { color });
+                            setShowMobileColorPicker(false);
+                          }}
+                          className={cn(
+                            "w-5 h-5 rounded transition-all duration-100 flex items-center justify-center shrink-0",
+                            "hover:scale-110 active:scale-90",
+                            isSelected && "scale-110",
+                            "animate-in zoom-in-50 fade-in-0 slide-in-from-top-2 duration-200"
+                          )}
+                          style={{ 
+                            backgroundColor: pastelValue,
+                            animationDelay: `${index * 30}ms`,
+                            animationFillMode: 'backwards'
+                          }}
+                          title={label}
+                        >
+                        </button>
+                      );
+                    })}
+                    {/* No color option */}
+                    <button
+                      onClick={() => {
+                        updateTask(task.id, { color: 'default' });
+                        setShowMobileColorPicker(false);
+                      }}
+                      className={cn(
+                        "w-5 h-5 rounded flex items-center justify-center shrink-0 transition-all duration-100",
+                        "hover:scale-110 active:scale-90",
+                        task.color === 'default' && "scale-110",
+                        "animate-in zoom-in-50 fade-in-0 slide-in-from-top-2 duration-200"
+                      )}
+                      style={{ 
+                        animationDelay: `${colorOptions.length * 30}ms`,
+                        animationFillMode: 'backwards'
+                      }}
+                      title="No highlight"
+                    >
+                      <X className="w-2.5 h-2.5 text-muted-foreground" />
+                    </button>
+                  </div>
+                </PopoverContent>
+              </Popover>
 
               {/* Repeat */}
               <Popover>
@@ -566,6 +595,56 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
                   </div>
                 </PopoverContent>
               </Popover>
+
+              {/* GCal - Mobile */}
+              <button
+                onClick={async () => {
+                  if (!isGcalConnected) {
+                    toast.info("Connect Google Calendar in Settings → Integrations");
+                    return;
+                  }
+                  if (!gcalSettings.defaultCalendarId) {
+                    toast.info("Select a calendar in Settings → Integrations");
+                    return;
+                  }
+                  
+                  setIsSyncingToGcal(true);
+                  try {
+                    if (task.googleCalendarEventId) {
+                      const confirmed = window.confirm("Remove from Google Calendar?");
+                      if (confirmed) {
+                        const success = await unsyncTask(task);
+                        if (success) {
+                          updateTask(task.id, { googleCalendarEventId: null });
+                        }
+                      }
+                    } else {
+                      const eventId = await syncTask(task);
+                      if (eventId) {
+                        updateTask(task.id, { googleCalendarEventId: eventId });
+                      }
+                    }
+                  } finally {
+                    setIsSyncingToGcal(false);
+                  }
+                }}
+                disabled={isSyncingToGcal}
+                className={cn(
+                  "flex items-center gap-1 h-7 px-2 rounded-md text-xs font-mono transition-colors shrink-0",
+                  task.googleCalendarEventId
+                    ? "bg-green-500/10 text-green-600"
+                    : isGcalConnected
+                      ? "bg-muted/30 text-muted-foreground"
+                      : "bg-muted/30 text-muted-foreground/50"
+                )}
+              >
+                {isSyncingToGcal ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <CalendarCheck className="w-3 h-3" />
+                )}
+                {task.googleCalendarEventId && <Check className="w-2.5 h-2.5" />}
+              </button>
 
             </div>
           </div>
@@ -674,311 +753,551 @@ export function TaskDetailModal({ task, open, onOpenChange }: TaskDetailModalPro
           </button>
         </div>
 
-        {/* Desktop Header Area */}
-        <div className="hidden md:flex items-center justify-between px-6 py-4 border-b border-border/40 bg-muted/10">
-          <div className="flex items-center gap-3">
-              <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
-                <PopoverTrigger asChild>
-                  <button className="group flex items-center gap-2 px-3 py-1.5 rounded-md hover:bg-accent/50 transition-all duration-200 text-sm font-mono font-medium text-muted-foreground hover:text-foreground">
-                    <CalendarIcon className="w-4 h-4" />
-                    <span>{formattedDate}</span>
-                    <ChevronDown className="w-3 h-3 opacity-50" />
-                  </button>
-                </PopoverTrigger>
-            <PopoverContent className="p-0 w-auto" align="start" sideOffset={6}>
-              <TaskDatePickerContent
-                variant="desktop"
-                selectedDate={task.date ? new Date(task.date) : null}
-                onSelectDate={handleCalendarDateChange}
-                onClose={() => setShowDatePicker(false)}
-              />
-            </PopoverContent>
-             </Popover>
-          </div>
-
-          <div className="flex items-center gap-1">
-              <button
-               onClick={handleDelete}
-               className="p-2 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
-               title="Delete Task"
-             >
-               <Trash2 className="w-4 h-4" />
-              </button>
-                    <button
-                onClick={() => handleClose(false)}
-                className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-all"
-             >
-                <X className="w-5 h-5" />
-                    </button>
-              </div>
-        </div>
-
-        {/* Main Body - Desktop only, mobile shows compact version above */}
-        <div className="hidden md:block px-8 py-6 space-y-8 max-h-[75vh] overflow-y-auto scrollbar-thin scrollbar-thumb-border">
+        {/* Desktop - Optimized layout with refined UX */}
+        <div className="hidden md:flex flex-col w-full h-full">
           
-          {/* Title Input */}
-          <div className="flex items-center gap-4">
-              <button
-                onClick={() => toggleTaskComplete(task.id)}
-                className={cn(
-                  'w-5 h-5 rounded-full border flex items-center justify-center flex-shrink-0 transition-all duration-200',
-                  task.completed
-                    ? 'bg-primary border-primary'
-                    : 'border-muted-foreground/40 hover:border-primary'
-                )}
-              >
-                {task.completed && <Check className="w-3 h-3 text-primary-foreground" strokeWidth={3} />}
-              </button>
-            <div className="flex-1">
-                <Input
-                  ref={titleInputRef}
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  onBlur={handleSaveTitle}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleSaveTitle();
-                      handleClose(false);
-                    }
-                  }}
-                  placeholder="Add task..."
+          {/* Header: Title with Checkbox & Actions */}
+          <div className="flex items-start gap-4 px-6 pt-6 pb-4">
+            <button
+              onClick={() => toggleTaskComplete(task.id)}
               className={cn(
-                    'text-base font-mono border-none shadow-none focus-visible:ring-0 px-0 h-auto bg-transparent placeholder:text-muted-foreground/50 leading-relaxed',
-                    task.completed && 'line-through text-muted-foreground'
-                  )}
-                />
-                  </div>
+                'w-6 h-6 mt-0.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all duration-200 hover:scale-105',
+                task.completed
+                  ? 'bg-primary border-primary'
+                  : 'border-muted-foreground/30 hover:border-primary/60'
+              )}
+            >
+              {task.completed && <Check className="w-3.5 h-3.5 text-primary-foreground" strokeWidth={3} />}
+            </button>
+            
+            <div className="flex-1 min-w-0">
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                onBlur={handleSaveTitle}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleSaveTitle();
+                    handleClose(false);
+                  }
+                }}
+                placeholder="Task name..."
+                className={cn(
+                  'text-base font-medium font-mono border-none shadow-none focus-visible:ring-0 px-0 h-auto bg-transparent placeholder:text-muted-foreground/40',
+                  task.completed && 'line-through text-muted-foreground'
+                )}
+              />
+            </div>
+            
+            <div className="flex items-center gap-1 -mt-1">
+              <button
+                onClick={handleDelete}
+                className="p-2 rounded-lg text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-all"
+                title="Delete Task"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handleClose(false)}
+                className="p-2 rounded-lg text-muted-foreground/50 hover:text-foreground hover:bg-muted transition-all"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
-          {/* Properties Grid */}
-          <div className="flex flex-col gap-6 pl-10">
-             
-             {/* Time Block */}
-             <div className="space-y-2">
-                <div className="bg-muted/20 rounded-lg p-3 border border-border/40 hover:border-border/80 transition-colors">
-                   <TimeSlotPicker
-                     value={task.timeSlot || null}
-                     onChange={handleTimeSlotChange}
-                     className="w-full"
-                     hideLabel={false}
-                   />
-                </div>
-             </div>
+          {/* Quick Actions - Pill style buttons */}
+          <div className="flex items-center gap-2 px-6 pb-5 flex-wrap">
+            {/* Date */}
+            <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
+              <PopoverTrigger asChild>
+                <button className={cn(
+                  "inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-mono transition-all border",
+                  task.date 
+                    ? "bg-primary/8 text-primary border-primary/20 hover:bg-primary/12" 
+                    : "bg-muted/40 text-muted-foreground border-transparent hover:bg-muted/60 hover:text-foreground"
+                )}>
+                  <CalendarIcon className="w-3.5 h-3.5" />
+                  <span>{task.date ? format(new Date(task.date), 'EEE, MMM d') : 'Add date'}</span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="p-0 w-auto" align="start" sideOffset={6}>
+                <TaskDatePickerContent
+                  variant="desktop"
+                  selectedDate={task.date ? new Date(task.date) : null}
+                  onSelectDate={handleCalendarDateChange}
+                  onClose={() => setShowDatePicker(false)}
+                />
+              </PopoverContent>
+            </Popover>
 
-             {/* Properties List */}
-             <div className="space-y-3">
-               <label className="text-[10px] uppercase tracking-wider font-mono text-muted-foreground font-semibold flex items-center gap-1.5">
-                  <AlignLeft className="w-3 h-3" /> Properties
-               </label>
-               
-               <div className="flex flex-wrap gap-2 relative z-20">
-                  {/* Color Picker - Dropdown Style */}
-                  <div ref={colorPickerRef} className="relative">
-                      <button
-                      onClick={() => setShowColorPicker(!showColorPicker)}
-                        className={cn(
-                        "flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-mono border transition-all duration-150 ease-out",
-                        task.color !== 'default' 
-                          ? "border-transparent text-foreground shadow-sm" 
-                          : "border-border/60 hover:border-border text-muted-foreground hover:text-foreground",
-                        showColorPicker && "ring-2 ring-primary/20"
-                      )}
-                      style={{
-                        backgroundColor: task.color !== 'default' 
-                          ? colorOptions.find(c => c.color === task.color)?.pastelValue 
-                          : 'transparent'
-                      }}
-                    >
-                      <Palette className="w-3.5 h-3.5" 
-                        style={{
-                          color: task.color !== 'default' ? colorOptions.find(c => c.color === task.color)?.value : undefined
+            {/* Time */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className={cn(
+                  "inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-mono transition-all border whitespace-nowrap",
+                  task.timeSlot 
+                    ? "bg-orange-500/8 text-orange-600 border-orange-500/20 hover:bg-orange-500/12" 
+                    : "bg-muted/40 text-muted-foreground border-transparent hover:bg-muted/60 hover:text-foreground"
+                )}>
+                  <Clock className="w-3.5 h-3.5 shrink-0" />
+                  <span>{task.timeSlot ? (() => {
+                    const formatTime = (time: string) => {
+                      const [h, m] = time.split(':').map(Number);
+                      const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+                      const ampm = h >= 12 ? 'PM' : 'AM';
+                      return `${hour12}:${String(m).padStart(2, '0')} ${ampm}`;
+                    };
+                    return `${formatTime(task.timeSlot.start)} – ${formatTime(task.timeSlot.end)}`;
+                  })() : 'Add time'}</span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-3" align="start" side="bottom" sideOffset={6}>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className="relative group">
+                      <input
+                        type="text"
+                        key={`start-${task.timeSlot?.start}`}
+                        defaultValue={(() => {
+                          if (!task.timeSlot?.start) return '';
+                          const [h, m] = task.timeSlot.start.split(':').map(Number);
+                          const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+                          const ampm = h >= 12 ? 'PM' : 'AM';
+                          return `${hour12}:${String(m).padStart(2, '0')} ${ampm}`;
+                        })()}
+                        placeholder="-- --"
+                        className="h-9 px-3 flex items-center justify-center text-sm font-mono rounded-lg border border-transparent bg-orange-500/10 text-orange-700 focus:bg-orange-500/20 focus:border-orange-500/30 focus:ring-0 focus:outline-none text-center w-[100px] transition-all placeholder:text-orange-700/50 selection:bg-orange-200 selection:text-orange-900"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.currentTarget.blur();
+                          }
+                        }}
+                        onBlur={(e) => {
+                          const input = e.target.value;
+                          if (!input) return;
+                          
+                          // Simple parsing logic
+                          const timeRegex = /^(\d{1,2})(?::(\d{2}))?\s*(am|pm|a|p)?$/i;
+                          const match = input.match(timeRegex);
+                          
+                          if (match) {
+                            let [_, hStr, mStr, meridiem] = match;
+                            let h = parseInt(hStr);
+                            let m = mStr ? parseInt(mStr) : 0;
+                            
+                            if (meridiem) {
+                              const isPM = meridiem.toLowerCase().startsWith('p');
+                              if (isPM && h < 12) h += 12;
+                              if (!isPM && h === 12) h = 0;
+                            } else if (h < 8) {
+                              // Assume PM for small numbers if no meridiem provided? Or keep 24h?
+                              // Let's stick to 24h or AM default if ambiguous, but 9 -> 09:00.
+                              // Common UX: < 12 is AM, > 12 is PM.
+                              // But 1-7 might mean PM in work context? Let's keep simple: AM default unless typed 13+.
+                            }
+
+                            const newStart = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                            handleTimeSlotChange({ 
+                              start: newStart, 
+                              end: task.timeSlot?.end || '10:00' 
+                            });
+                          } else {
+                            // Revert on invalid (trigger re-render via key update or manual reset)
+                            e.target.value = e.target.defaultValue;
+                          }
                         }}
                       />
-                      <span>{task.color === 'default' ? 'Color' : colorOptions.find(c => c.color === task.color)?.label}</span>
-                      </button>
+                    </div>
+                    <span className="text-xs text-muted-foreground/60 font-medium">→</span>
+                    <div className="relative group">
+                      <input
+                        type="text"
+                        key={`end-${task.timeSlot?.end}`}
+                        defaultValue={(() => {
+                          if (!task.timeSlot?.end) return '';
+                          const [h, m] = task.timeSlot.end.split(':').map(Number);
+                          const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
+                          const ampm = h >= 12 ? 'PM' : 'AM';
+                          return `${hour12}:${String(m).padStart(2, '0')} ${ampm}`;
+                        })()}
+                        placeholder="-- --"
+                        className="h-9 px-3 flex items-center justify-center text-sm font-mono rounded-lg border border-transparent bg-orange-500/10 text-orange-700 focus:bg-orange-500/20 focus:border-orange-500/30 focus:ring-0 focus:outline-none text-center w-[100px] transition-all placeholder:text-orange-700/50 selection:bg-orange-200 selection:text-orange-900"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.currentTarget.blur();
+                          }
+                        }}
+                        onBlur={(e) => {
+                          const input = e.target.value;
+                          if (!input) return;
+                          
+                          const timeRegex = /^(\d{1,2})(?::(\d{2}))?\s*(am|pm|a|p)?$/i;
+                          const match = input.match(timeRegex);
+                          
+                          if (match) {
+                            let [_, hStr, mStr, meridiem] = match;
+                            let h = parseInt(hStr);
+                            let m = mStr ? parseInt(mStr) : 0;
+                            
+                            if (meridiem) {
+                              const isPM = meridiem.toLowerCase().startsWith('p');
+                              if (isPM && h < 12) h += 12;
+                              if (!isPM && h === 12) h = 0;
+                            }
 
-                    {/* Dropdown Menu - Expands horizontally */}
-                    <div className={cn(
-                      "absolute top-full left-0 mt-1 z-50 overflow-hidden",
-                      "rounded-md border border-border/60 bg-background/95 backdrop-blur-md shadow-lg",
-                      "transition-all duration-100 ease-out",
-                      showColorPicker 
-                        ? "opacity-100 max-w-[300px]" 
-                        : "opacity-0 max-w-0 pointer-events-none"
-                    )}>
-                      <div className="flex items-center gap-1.5 p-1.5 whitespace-nowrap">
-                        {colorOptions.map((option) => (
-                  <button
-                            key={option.color}
-                            onClick={() => {
-                              setShowColorPicker(false);
-                              updateTask(task.id, { color: option.color });
-                            }}
-                    className={cn(
-                              "w-5 h-5 rounded transition-all duration-150 ease-out flex items-center justify-center",
-                              "hover:scale-125",
-                              task.color === option.color && "scale-110"
-                            )}
-                            style={{ backgroundColor: option.pastelValue }}
-                            title={option.label}
-                          >
-                            {task.color === option.color && (
-                              <Check
-                                className="w-3 h-3 drop-shadow-sm"
-                                strokeWidth={2.5}
-                                style={{ color: option.value }}
-                              />
-                            )}
-                      </button>
-                        ))}
+                            const newEnd = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                            handleTimeSlotChange({ 
+                              start: task.timeSlot?.start || '09:00', 
+                              end: newEnd 
+                            });
+                          } else {
+                            e.target.value = e.target.defaultValue;
+                          }
+                        }}
+                      />
+                    </div>
+                    <button
+                      onClick={() => task.timeSlot && handleTimeSlotChange(null)}
+                      className={cn(
+                        "h-9 w-9 flex items-center justify-center rounded-lg transition-all shrink-0",
+                        task.timeSlot 
+                          ? "text-red-500 hover:bg-red-500/10" 
+                          : "text-muted-foreground/20 cursor-default"
+                      )}
+                      disabled={!task.timeSlot}
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="flex gap-1.5 items-center">
+                    {timePresets.map((d) => {
+                      const start = task.timeSlot?.start || '09:00';
+                      const end = task.timeSlot?.end || '10:00';
+                      const [sh, sm] = start.split(':').map(Number);
+                      const [eh, em] = end.split(':').map(Number);
+                      const currentDuration = (eh * 60 + em) - (sh * 60 + sm);
+                      const isActive = task.timeSlot && currentDuration === d.minutes;
+                      return (
+                        <button
+                          key={d.id}
+                          onClick={() => {
+                            let startStr = task.timeSlot?.start;
+                            
+                            if (!startStr) {
+                              const now = new Date();
+                              const h = now.getHours();
+                              const m = now.getMinutes();
+                              startStr = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+                            }
+
+                            const [sh, sm] = startStr.split(':').map(Number);
+                            const endMinutes = sh * 60 + sm + d.minutes;
+                            const endH = Math.floor(endMinutes / 60) % 24;
+                            const endM = endMinutes % 60;
+                            
+                            handleTimeSlotChange({
+                              start: startStr,
+                              end: `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`
+                            });
+                          }}
+                          className={cn(
+                            "px-3 py-1.5 text-xs font-mono rounded-md transition-all",
+                            isActive 
+                              ? "bg-orange-500/15 text-orange-600 font-medium" 
+                              : "bg-muted/40 text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                          )}
+                        >
+                          {d.label}
+                        </button>
+                      );
+                    })}
+                    <Link href="/settings?section=general">
+                      <Button variant="ghost" size="icon" className="h-6 w-6 rounded-md hover:bg-muted/60 ml-0.5">
+                        <Edit2 className="w-3 h-3 text-muted-foreground" />
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {/* Color */}
+            <div ref={desktopColorPickerRef} className="relative">
+              <button
+                onClick={() => setShowDesktopColorPicker(!showDesktopColorPicker)}
+                className={cn(
+                  "h-8 w-8 rounded-full flex items-center justify-center transition-all border",
+                  task.color !== 'default'
+                    ? "border-transparent"
+                    : "bg-muted/40 border-transparent hover:bg-muted/60",
+                  showDesktopColorPicker && "ring-2 ring-primary/20"
+                )}
+                style={{
+                  backgroundColor: task.color !== 'default'
+                    ? colorOptions.find(c => c.color === task.color)?.pastelValue
+                    : undefined
+                }}
+              >
+                <Palette
+                  className="w-3.5 h-3.5"
+                  style={{ color: task.color !== 'default'
+                    ? colorOptions.find(c => c.color === task.color)?.value
+                    : 'hsl(var(--muted-foreground))' }}
+                />
+              </button>
+              
+              <div className={cn(
+                "absolute left-0 top-full mt-2 z-50",
+                "bg-background rounded-lg shadow-lg border border-border/50",
+                "overflow-hidden transition-all duration-150 ease-out",
+                showDesktopColorPicker 
+                  ? "opacity-100 scale-100" 
+                  : "opacity-0 scale-95 pointer-events-none"
+              )}>
+                <div className="flex items-center gap-1.5 p-2 whitespace-nowrap">
+                  {colorOptions.map((option, index) => (
+                    <button
+                      key={option.color}
+                      onClick={() => {
+                        setShowDesktopColorPicker(false);
+                        updateTask(task.id, { color: option.color });
+                      }}
+                      className={cn(
+                        "w-6 h-6 rounded-full transition-all duration-150 ease-out flex items-center justify-center",
+                        "hover:scale-110",
+                        task.color === option.color && "ring-2 ring-offset-2 ring-offset-background"
+                      )}
+                      style={{ 
+                        backgroundColor: option.pastelValue,
+                        '--tw-ring-color': option.value
+                      } as React.CSSProperties}
+                      title={option.label}
+                    />
+                  ))}
+                  <div className="w-px h-5 bg-border/50 mx-0.5" />
                   <button
                     onClick={() => {
-                            setShowColorPicker(false);
-                            updateTask(task.id, { color: 'default' });
+                      setShowDesktopColorPicker(false);
+                      updateTask(task.id, { color: 'default' });
                     }}
                     className={cn(
-                            "w-5 h-5 rounded transition-all duration-150 ease-out flex items-center justify-center",
-                            "hover:scale-125",
-                            task.color === 'default' && "scale-110"
-                          )}
-                          title="No Color"
-                        >
-                          <X className="w-3 h-3 text-muted-foreground" />
+                      "w-6 h-6 rounded-full transition-all duration-150 ease-out flex items-center justify-center",
+                      "hover:scale-110 bg-muted/50",
+                      task.color === 'default' && "ring-2 ring-offset-2 ring-offset-background ring-muted-foreground/30"
+                    )}
+                    title="No Color"
+                  >
+                    <X className="w-3 h-3 text-muted-foreground" />
                   </button>
                 </div>
-                    </div>
-                  </div>
+              </div>
+            </div>
 
-                  {/* Repeat */}
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button className={cn(
-                        "flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-mono border transition-all",
-                         task.repeatPattern ? "bg-blue-500/10 text-blue-600 border-blue-500/20" : "border-border/60 hover:border-border text-muted-foreground hover:text-foreground"
-                      )}>
-                        <Repeat className="w-3.5 h-3.5" />
-                        <span>{repeatOptions.find(r => r.value === task.repeatPattern)?.label || 'Repeat'}</span>
-                    </button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-48 p-1" align="start">
-                      {repeatOptions.map(opt => (
+            {/* Repeat */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className={cn(
+                  "h-8 w-8 rounded-full flex items-center justify-center transition-all border",
+                  task.repeatPattern 
+                    ? "bg-violet-500/10 text-violet-600 border-violet-500/20 hover:bg-violet-500/15" 
+                    : "bg-muted/40 text-muted-foreground border-transparent hover:bg-muted/60 hover:text-foreground"
+                )}>
+                  <Repeat className="w-3.5 h-3.5" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[140px] p-1.5" align="start" side="bottom" sideOffset={6}>
+                <div className="space-y-0.5">
+                  {repeatOptions.map((opt) => (
                     <button
-                          key={opt.label}
-                          onClick={() => updateTask(task.id, { repeatPattern: opt.value })}
-                          className="w-full text-left px-2 py-1.5 text-xs font-mono rounded hover:bg-accent"
+                      key={opt.label}
+                      onClick={() => updateTask(task.id, { repeatPattern: opt.value })}
+                      className={cn(
+                        "w-full text-left px-3 py-2 text-xs font-mono rounded-md transition-colors",
+                        task.repeatPattern === opt.value 
+                          ? "bg-violet-500/10 text-violet-600 font-medium" 
+                          : "hover:bg-muted/50 text-foreground"
+                      )}
                     >
-                          {opt.label}
+                      {opt.label}
                     </button>
-                      ))}
-            </PopoverContent>
-          </Popover>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
 
-                  {/* Reminder - Coming Soon */}
-          <button
-            disabled
-            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-mono border border-border/40 text-muted-foreground/50 cursor-not-allowed"
-            title="Reminders coming soon"
-          >
-            <Bell className="w-3.5 h-3.5" />
-            <span>Reminder</span>
-            <span className="text-[9px] bg-muted px-1 py-0.5 rounded">Soon</span>
-          </button>
-
-                  {/* Add to GCal - Coming Soon */}
+            {/* Reminder - Coming Soon */}
             <button
-            disabled
-            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-mono border border-border/40 text-muted-foreground/50 cursor-not-allowed"
-            title="Google Calendar sync coming soon"
-          >
-            <CalendarCheck className="w-3.5 h-3.5" />
-            <span>GCal</span>
-            <span className="text-[9px] bg-muted px-1 py-0.5 rounded">Soon</span>
+              onClick={() => toast.info("Reminders are coming soon!")}
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-mono border border-transparent bg-muted/40 text-muted-foreground/50 hover:bg-muted/60 hover:text-muted-foreground transition-colors"
+              title="Reminders coming soon"
+            >
+              <Bell className="w-3.5 h-3.5" />
+              <span>Reminder</span>
+              <span className="text-[9px] bg-muted-foreground/10 px-1 rounded">Soon</span>
             </button>
-        </div>
-             </div>
+
+            {/* GCal Sync Button */}
+            <button
+              onClick={async () => {
+                if (!isGcalConnected) {
+                  toast.info("Connect Google Calendar in Settings → Integrations");
+                  return;
+                }
+                if (!gcalSettings.defaultCalendarId) {
+                  toast.info("Select a calendar in Settings → Integrations");
+                  return;
+                }
+                
+                setIsSyncingToGcal(true);
+                try {
+                  if (task.googleCalendarEventId) {
+                    // Already synced - offer to remove
+                    const confirmed = window.confirm("This task is already synced. Remove from Google Calendar?");
+                    if (confirmed) {
+                      const success = await unsyncTask(task);
+                      if (success) {
+                        updateTask(task.id, { googleCalendarEventId: null });
+                      }
+                    }
+                  } else {
+                    // Sync to Google Calendar
+                    const eventId = await syncTask(task);
+                    if (eventId) {
+                      updateTask(task.id, { googleCalendarEventId: eventId });
+                    }
+                  }
+                } finally {
+                  setIsSyncingToGcal(false);
+                }
+              }}
+              disabled={isSyncingToGcal}
+              className={cn(
+                "inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-mono border border-transparent transition-colors",
+                task.googleCalendarEventId
+                  ? "bg-green-500/10 text-green-700 hover:bg-green-500/20"
+                  : isGcalConnected
+                    ? "bg-muted/40 text-foreground/70 hover:bg-muted/60"
+                    : "bg-muted/40 text-muted-foreground/50 hover:bg-muted/60 hover:text-muted-foreground"
+              )}
+              title={
+                task.googleCalendarEventId 
+                  ? "Synced to Google Calendar (click to remove)" 
+                  : isGcalConnected 
+                    ? "Sync to Google Calendar"
+                    : "Connect Google Calendar in Settings"
+              }
+            >
+              {isSyncingToGcal ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <CalendarCheck className="w-3.5 h-3.5" />
+              )}
+              <span>GCal</span>
+              {task.googleCalendarEventId && (
+                <Check className="w-3 h-3" />
+              )}
+              {!isGcalConnected && (
+                <span className="text-[9px] bg-muted-foreground/10 px-1 rounded">Setup</span>
+              )}
+            </button>
           </div>
 
-          {/* Notes */}
-          <div className="pl-10 space-y-2">
-            <textarea
-              ref={notesTextareaRef}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              onBlur={handleSaveNotes}
-                placeholder="Add notes..."
-                className="w-full min-h-[80px] text-sm bg-transparent border-none resize-none placeholder:text-muted-foreground/40 focus:ring-0 p-0 font-sans"
-            />
-          </div>
+          {/* Divider */}
+          <div className="h-px bg-border/40 mx-6" />
 
-          {/* Subtasks */}
-          <div className="pl-10 space-y-1">
-             {/* Subtasks Header */}
-             <div className="flex items-center justify-between mb-2">
-               <label className="text-[10px] uppercase tracking-wider font-mono text-muted-foreground font-semibold">
-                 Subtasks
-               </label>
-               {task.subtasks && task.subtasks.length > 0 && (
-                 <span className="text-[10px] font-mono text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">
-                   {task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}
-                 </span>
-               )}
-             </div>
-             
-             {/* Existing Subtasks */}
-             {task.subtasks?.map(subtask => (
-               <div key={subtask.id} className="flex items-center gap-3 group py-2 px-3 -mx-3 rounded-lg hover:bg-muted/30 transition-colors">
-                 <button
-                   onClick={() => handleToggleSubtask(subtask.id)}
-                   className={cn(
-                     "group/checkbox flex-shrink-0 flex items-center justify-center",
-                     "p-2 -m-2",
-                     "transition-all duration-200 ease-out"
-                   )}
-                 >
-                   <div className={cn(
-                     "w-4 h-4 rounded-full border flex items-center justify-center",
-                     "transition-all duration-200 ease-out",
-                     "group-hover/checkbox:scale-110 group-active/checkbox:scale-90",
-                     subtask.completed
-                       ? "bg-primary border-primary text-primary-foreground"
-                       : "border-muted-foreground/40 group-hover/checkbox:border-primary/60 bg-transparent"
-                   )}>
-                     {subtask.completed && <Check className="w-2.5 h-2.5" strokeWidth={3} />}
-                   </div>
-                 </button>
-                 <span className={cn(
-                   "text-sm font-mono flex-1 leading-relaxed transition-colors",
-                   subtask.completed ? "line-through text-muted-foreground" : "text-foreground"
-                 )}>
-                   {subtask.title}
-                 </span>
-                 <button
-                   onClick={() => handleDeleteSubtask(subtask.id)}
-                   className={cn(
-                     "opacity-0 group-hover:opacity-100 p-1 rounded",
-                     "text-muted-foreground hover:text-destructive transition-all duration-200",
-                     "hover:bg-destructive/10 hover:scale-110"
-                   )}
-                 >
-                   <Trash2 className="w-3.5 h-3.5" />
-                 </button>
-               </div>
-             ))}
-             
-             {/* Add Subtask Row - matches main task list input style */}
-             <div className="flex items-center gap-3 py-2 px-3 -mx-3 rounded-lg">
-               <div className="w-4 h-4 rounded-full border border-dashed border-muted-foreground/30 flex-shrink-0" />
-               <input
-                 ref={subtaskInputRef}
-                 value={newSubtask}
-                 onChange={(e) => setNewSubtask(e.target.value)}
-                 onKeyDown={(e) => e.key === 'Enter' && handleAddSubtask()}
-                 onBlur={handleAddSubtask}
-                 placeholder="Add subtask..."
-                 className="bg-transparent border-none text-sm font-mono focus:ring-0 p-0 placeholder:text-muted-foreground/50 flex-1 leading-relaxed"
-               />
-             </div>
+          {/* Scrollable Content */}
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6 max-h-[50vh]">
+            
+            {/* Subtasks Section */}
+            <div>
+              <div className="text-[11px] font-semibold text-muted-foreground/50 uppercase tracking-wider mb-3 flex items-center justify-between">
+                <span>Subtasks</span>
+                {task.subtasks && task.subtasks.length > 0 && (
+                  <span className="text-[10px] font-mono text-muted-foreground/60 bg-muted/40 px-2 py-0.5 rounded-full">
+                    {task.subtasks.filter(s => s.completed).length}/{task.subtasks.length}
+                  </span>
+                )}
+              </div>
+              
+              <div className="space-y-0.5">
+                {(() => {
+                  const moveCompletedToBottom = typeof window !== 'undefined' 
+                    ? storage.get<boolean>('aerotodo_move_completed_to_bottom', false)
+                    : false;
+                  
+                  const sortedSubtasks = [...(task.subtasks || [])].sort((a, b) => {
+                    if (moveCompletedToBottom && a.completed !== b.completed) {
+                      return a.completed ? 1 : -1;
+                    }
+                    return 0;
+                  });
+                  
+                  return sortedSubtasks;
+                })().map(subtask => (
+                  <div 
+                    key={subtask.id} 
+                    className="flex items-center gap-3 py-2.5 px-3 -mx-3 rounded-lg hover:bg-muted/40 transition-colors group"
+                  >
+                    <button
+                      onClick={() => handleToggleSubtask(subtask.id)}
+                      className={cn(
+                        "w-[18px] h-[18px] rounded-full border-[1.5px] flex items-center justify-center flex-shrink-0 transition-all hover:scale-105",
+                        subtask.completed 
+                          ? "bg-primary border-primary" 
+                          : "border-muted-foreground/30 hover:border-primary/60"
+                      )}
+                    >
+                      {subtask.completed && <Check className="w-2.5 h-2.5 text-primary-foreground" strokeWidth={3} />}
+                    </button>
+                    <span className={cn(
+                      "flex-1 text-sm font-mono",
+                      subtask.completed && "line-through text-muted-foreground/60"
+                    )}>
+                      {subtask.title}
+                    </span>
+                    <button
+                      onClick={() => handleDeleteSubtask(subtask.id)}
+                      className="p-1.5 -mr-1.5 rounded-md text-muted-foreground/0 group-hover:text-muted-foreground/40 hover:!text-destructive hover:bg-destructive/10 transition-all"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+
+                <div className="flex items-center gap-3 py-2.5 px-3 -mx-3 rounded-lg hover:bg-muted/20 transition-colors">
+                  <div className="w-[18px] h-[18px] rounded-full border-[1.5px] border-dashed border-muted-foreground/25 flex-shrink-0" />
+                  <input
+                    ref={subtaskInputRef}
+                    value={newSubtask}
+                    onChange={(e) => setNewSubtask(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddSubtask()}
+                    onBlur={handleAddSubtask}
+                    placeholder="Add subtask..."
+                    className="bg-transparent border-none text-sm font-mono focus:ring-0 p-0 placeholder:text-muted-foreground/35 flex-1"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Notes Section */}
+            <div>
+              <div className="text-[11px] font-semibold text-muted-foreground/50 uppercase tracking-wider mb-2.5 flex items-center gap-2">
+                <AlignLeft className="w-3.5 h-3.5" />
+                <span>Notes</span>
+              </div>
+              <div className="bg-muted/20 rounded-xl border border-border/30 hover:border-border/50 transition-colors focus-within:border-primary/30 focus-within:bg-muted/30">
+                <textarea
+                  ref={notesTextareaRef}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  onBlur={handleSaveNotes}
+                  placeholder="Add notes..."
+                  className="w-full min-h-[100px] text-sm bg-transparent border-none resize-none placeholder:text-muted-foreground/35 focus:ring-0 p-4 font-sans leading-relaxed"
+                />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -1096,6 +1415,15 @@ function TaskDatePickerContent({
         modifiersClassNames={DATE_PICKER_MODIFIER_CLASSNAMES}
         initialFocus={isDesktop}
       />
+      <div className="p-2 border-t border-border/50">
+        <button
+          onClick={() => handleSelect(null)}
+          className="w-full flex items-center justify-center gap-2 px-3 py-1.5 rounded-md text-xs font-mono text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+        >
+          <Inbox className="w-3.5 h-3.5" />
+          <span>Move to Inbox</span>
+        </button>
+      </div>
     </div>
   );
 }

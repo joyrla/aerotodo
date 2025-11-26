@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Task, Project, CalendarState, ViewMode, CalendarContextType } from '@/types';
+import { Task, Project, CalendarState, ViewMode, CalendarContextType, TimePreset } from '@/types';
 import { storage } from '@/lib/utils/storage';
 import { taskHelpers } from '@/lib/utils/taskHelpers';
 import { dateHelpers } from '@/lib/utils/dateHelpers';
@@ -12,12 +12,20 @@ import { addActivity } from '@/components/Calendar/modules/RecentActivityModule'
 
 const CalendarContext = createContext<CalendarContextType | undefined>(undefined);
 
+const DEFAULT_TIME_PRESETS: TimePreset[] = [
+  { id: '15m', label: '15m', minutes: 15 },
+  { id: '30m', label: '30m', minutes: 30 },
+  { id: '1h', label: '1h', minutes: 60 },
+  { id: '2h', label: '2h', minutes: 120 },
+];
+
 export function CalendarProvider({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
   const [tasks, setTasksState] = useState<Task[]>([]);
   const [projects, setProjectsState] = useState<Project[]>([]);
   const [viewMode, setViewModeState] = useState<ViewMode>('week');
   const [currentDateStr, setCurrentDateStrState] = useState<string>(new Date().toISOString());
+  const [timePresets, setTimePresets] = useState<TimePreset[]>(DEFAULT_TIME_PRESETS);
   const trashTimeoutsRef = React.useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   const [state, setState] = useState<CalendarState>({
@@ -92,9 +100,11 @@ export function CalendarProvider({ children }: { children: React.ReactNode }) {
       // Always load view settings from local storage
     const storedViewMode = storage.get<ViewMode>('aerotodo_view_mode', 'week');
     const storedDateStr = storage.get<string>('aerotodo_current_date', new Date().toISOString());
+    const storedPresets = storage.get<TimePreset[]>('aerotodo_time_presets', DEFAULT_TIME_PRESETS);
     
     setViewModeState(storedViewMode);
     setCurrentDateStrState(storedDateStr);
+    setTimePresets(storedPresets);
     
       setState(prev => ({
         ...prev,
@@ -107,6 +117,11 @@ export function CalendarProvider({ children }: { children: React.ReactNode }) {
         try {
           const { data: tasksData, error: tasksError } = await supabase.from('tasks').select('*');
           const { data: projectsData, error: projectsError } = await supabase.from('projects').select('*');
+          const { data: settingsData, error: settingsError } = await supabase
+            .from('user_settings')
+            .select('preferences')
+            .eq('user_id', user.id)
+            .single();
 
           if (tasksError) throw tasksError;
           if (projectsError) throw projectsError;
@@ -116,6 +131,11 @@ export function CalendarProvider({ children }: { children: React.ReactNode }) {
           }
           if (projectsData) {
             setProjectsState(projectsData.map(mapProjectFromDB));
+          }
+          if (settingsData?.preferences?.timePresets) {
+            setTimePresets(settingsData.preferences.timePresets);
+            // Sync to local
+            storage.set('aerotodo_time_presets', settingsData.preferences.timePresets);
           }
         } catch (error: any) {
           console.error('Error loading data from Supabase:', error.message || error);
@@ -525,6 +545,39 @@ export function CalendarProvider({ children }: { children: React.ReactNode }) {
     setCurrentDateStr(date.toISOString());
   };
 
+  const updateTimePresets = async (newPresets: TimePreset[]) => {
+    setTimePresets(newPresets);
+    storage.set('aerotodo_time_presets', newPresets);
+
+    if (user) {
+      try {
+        const { data } = await supabase
+          .from('user_settings')
+          .select('preferences')
+          .eq('user_id', user.id)
+          .single();
+        
+        const currentPrefs = data?.preferences || {};
+        
+        const { error } = await supabase
+          .from('user_settings')
+          .update({
+            preferences: {
+              ...currentPrefs,
+              timePresets: newPresets
+            },
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', user.id);
+
+        if (error) throw error;
+      } catch (error) {
+        console.error('Error updating time presets:', error);
+        toast.error('Failed to save time presets');
+      }
+    }
+  };
+
   const goToToday = () => {
     setCurrentDateStr(new Date().toISOString());
   };
@@ -580,6 +633,8 @@ export function CalendarProvider({ children }: { children: React.ReactNode }) {
     goToNextMonth,
     goToPreviousDay,
     goToNextDay,
+    timePresets,
+    updateTimePresets,
   };
 
   return (

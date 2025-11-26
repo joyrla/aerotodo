@@ -62,3 +62,4 @@ yarn-error.log*
 # Misc
 .sentryclirc
 next-env.d.ts
+client_secret_*.json
