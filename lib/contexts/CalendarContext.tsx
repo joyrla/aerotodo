@@ -199,6 +199,44 @@ export function CalendarProvider({ children }: { children: React.ReactNode }) {
     }));
   }, [currentDateStr, viewMode]);
 
+  // Ensure each profile has a corresponding project entry (required for FK constraints)
+  useEffect(() => {
+    const profiles = profileStorage.getProfiles();
+    if (!profiles.length) return;
+
+    const missingProfiles = profiles.filter(profile =>
+      !projects.find(project => project.id === profile.id)
+    );
+
+    if (!missingProfiles.length) return;
+
+    const newProjects = missingProfiles.map(profile => ({
+      id: profile.id,
+      name: profile.name,
+      color: profile.color,
+      createdAt: new Date().toISOString(),
+    }));
+
+    setProjectsState(prev => {
+      const updated = [...prev, ...newProjects];
+      if (!user) {
+        storage.set('aerotodo_projects', updated);
+      }
+      return updated;
+    });
+
+    if (user && supabase) {
+      supabase
+        .from('projects')
+        .insert(newProjects.map(project => mapProjectToDB(project, user.id)))
+        .then(({ error }) => {
+          if (error) {
+            console.error('Error creating profile-backed project:', error);
+          }
+        });
+    }
+  }, [projects, user]);
+
   // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
